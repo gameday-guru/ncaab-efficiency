@@ -34,10 +34,11 @@ async def set_projection_table(context, value):
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_projection_table(event):
 
-    
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table()
-    eff_out = eff.copy() # ! use this if you want eff to remain to the same throughout iteration
+   
+    ptable = await get_projection_table()
+    ptable_out = ptable.copy()  # ! use this if you want eff to remain to the same throughout iteration
    
     # get games from sportsdataio
     lookahead = timedelta.days(7)
