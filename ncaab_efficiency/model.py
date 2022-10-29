@@ -54,7 +54,7 @@ async def iterate_projection_table(event):
         
     # TODO: Liam provide more performant redis bindings for this merge.
     # merge 
-    await set_projection_table(root, eff_out)
+    await set_projection_table(root, ptable_out)
 
 @ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
 async def get_league_efficiency_table(context, value):
