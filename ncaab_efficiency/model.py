@@ -37,6 +37,7 @@ async def iterate_projection_table(event):
     
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table()
+    eff_out = eff.copy() # ! use this if you want eff to remain to the same throughout iteration
    
     # get games from sportsdataio
     lookahead = timedelta.days(7)
@@ -48,11 +49,11 @@ async def iterate_projection_table(event):
         # get_league_efficiency
         # proj_tempo = tempo + opp_tempo - tempo_avg
         # projection = proj_tempo*(oe+de-ppp_avg)/100
-        # ? eff[game_id] = ...
+        # ? eff_out[game_id] = ...
         
     # TODO: Liam provide more performant redis bindings for this merge.
     # merge 
-    await set_projection_table(root, eff)
+    await set_projection_table(root, eff_out)
 
 @ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
 async def get_league_efficiency_table(context, value):
