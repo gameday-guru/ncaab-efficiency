@@ -5,6 +5,33 @@ from gdg_model_builder import Model, \
     poll, days, secs, dow, Event, root
 from pydantic import BaseModel
 
+def get_ppp(pts: int, possessions: int):
+    return pts/possessions
+
+def get_game_efficiency(ppp_o: float, ppp_d: float, opp_de: float, opp_oe: float, ppp_avg: float):
+    game_oe = = ppp_o/(opp_de/ppp_avg)
+    game_de = ppp_d/(opp_oe/ppp_avg)
+    return (game_oe, game_de)
+
+def get_projection(tempo: float, opp_tempo: float, tempo_avg: float, oe: float, de: float, ppp_avg: float):
+    proj_tempo = tempo + opp_tempo - tempo_avg
+    return proj_tempo * (oe + de - ppp_avg)/100
+
+def get_power_ranking(oe: float, de: float):
+    return (.56)*oe + (.44)*de
+
+def get_weight(n_games: int)
+    if n_games <= 23:
+        weight = .04*n_games
+    else: 
+        weight = .94
+    return weight
+
+def get_new_e(preseason_oe: float, preseason_de: float, avg_game_oe: float, avg_game_de: float, weight: float):
+    oe = (1-weight)*preseason_oe + weight*(avg_game_oe)
+    de = (1-weight)*preseason_de + weight*(avg_game_de)
+    return (oe, de)
+
 class ProjectionEntry(BaseModel):
     game_id : int
     home_team_id : int
