@@ -81,11 +81,13 @@ async def set_game_efficiency_tables(context, value):
     return value
 
 @ncaab_efficiency.task(valid=days(1))
-async def iterate_efficiency(context, value):
+async def iterate_efficiency(e):
     
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table()
+    eff_out = eff.copy()
     game_effs = await get_game_efficiency_tables()
+    games_effs_out = games_effs.copy()
    
     for team_id, eff in eff.items():
         # adjust update
