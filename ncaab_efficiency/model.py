@@ -33,12 +33,10 @@ async def set_projection_table(context, value):
 
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_projection_table(event):
-    
-    # addended projection
-    update : Dict[str, ProjectionEntry] = {}
+
     
     # fix league efficiency at start of iteration
-    eff = await get_league_efficiency()
+    eff = await get_league_efficiency_table()
    
     # get games from sportsdataio
     lookahead = timedelta.days(7)
@@ -50,43 +48,42 @@ async def iterate_projection_table(event):
         # get_league_efficiency
         # proj_tempo = tempo + opp_tempo - tempo_avg
         # projection = proj_tempo*(oe+de-ppp_avg)/100
+        # ? eff[game_id] = ...
         
     # TODO: Liam provide more performant redis bindings for this merge.
     # merge 
-    await set_projection_table(root, {**update, **(await get_projection_table())})
+    await set_projection_table(root, eff)
 
 @ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
-async def get_league_efficiency(context, value):
+async def get_league_efficiency_table(context, value):
     return value
 
 @ncaab_efficiency.set("league_effiency_table", universal, private, t=Dict[str, EfficiencyEntry])
-async def set_league_efficiency(context, value):
+async def set_league_efficiency_table(context, value):
     return value
 
 @ncaab_efficiency.get("manual_league_efficiency_table", universal, t=Dict[str, EfficiencyEntry])
-async def set_league_table(context, value):
+async def get_manual_league_efficiency_table(context, value):
     return value
 
 @ncaab_efficiency.set("manual_league_efficiency_table", universal, t=Dict[str, EfficiencyEntry])
-async def set_league_table(context, value):
+async def set_manual_league_efficiency_table(context, value):
     return value
 
 @ncaab_efficiency.get("game_efficiency_tables", universal, private, t=Dict[str, Dict[str, EfficiencyEntry]])
-async def get_game_efficiency(context, value):
+async def get_game_efficiency_tables(context, value):
     return value
 
 @ncaab_efficiency.set("game_efficiency_tables", universal, private, t=Dict[str, Dict[str, EfficiencyEntry]])
-async def set_game_efficiency(context, value):
+async def set_game_efficiency_tables(context, value):
     return value
 
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_efficiency(context, value):
     
-    # addended projection
-    update : Dict[str, EfficiencyEntry] = {}
-    
     # fix league efficiency at start of iteration
-    eff = await get_league_efficiency()
+    eff = await get_league_efficiency_table()
+    game_effs = await get_game_efficiency_tables()
    
     for team_id, eff in eff.items():
         # adjust update
@@ -102,14 +99,18 @@ async def iterate_efficiency(context, value):
         # oe = (1-weight)*preseason_oe + weight*(AVG(game_efficiency_table[game_oe]))
         # de = (1-weight)*preseason_de + weight*(AVG(game_efficiency_table[game_de]))
         
+        # ? eff[team_id] = ... 
+        
         # check if team had a game yesterday/game was finished
         # if game.date == yesterday or last_game.finished: 
             # add to game_tables
+            # ? game_effs[team_id][game.id] = ...
         pass
         
     # TODO: Liam provide more performant redis bindings for this merge.
     # merge 
-    await set_projection_table(root, {**update, **(await get_projection_table())})
+    await set_league_efficiency_table(root, game_effs)
+    await set_league_efficiency_table(root, eff)
 
 
 if __name__ == "__main__":
