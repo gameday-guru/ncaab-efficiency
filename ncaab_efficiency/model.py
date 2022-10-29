@@ -50,7 +50,7 @@ async def iterate_projection_table(event):
         # get_league_efficiency
         # proj_tempo = tempo + opp_tempo - tempo_avg
         # projection = proj_tempo*(oe+de-ppp_avg)/100
-        # ? eff_out[game_id] = ...
+        # ? ptable_out[game_id] = ...
         
     # TODO: Liam provide more performant redis bindings for this merge.
     # merge 
