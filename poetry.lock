@@ -80,6 +80,14 @@ python-versions = ">=3.6.0"
 unicode_backport = ["unicodedata2"]
 
 [[package]]
+name = "checksumdir"
+version = "1.2.0"
+description = "Compute a single hash of the file contents of a directory."
+category = "main"
+optional = false
+python-versions = ">=3.6,<4.0"
+
+[[package]]
 name = "click"
 version = "8.1.3"
 description = "Composable command line interface toolkit"
@@ -142,7 +150,7 @@ idna = ">=2.0.0"
 
 [[package]]
 name = "exceptiongroup"
-version = "1.0.0"
+version = "1.0.1"
 description = "Backport of PEP 654 (exception groups)"
 category = "main"
 optional = false
@@ -180,7 +188,7 @@ test = ["pytest (>=6.2.4,<7.0.0)", "pytest-cov (>=2.12.0,<4.0.0)", "mypy (==0.91
 
 [[package]]
 name = "gdg-model-builder"
-version = "1.3.5"
+version = "1.3.14"
 description = ""
 category = "main"
 optional = false
@@ -189,6 +197,7 @@ python-versions = ">3.9,<4.0"
 [package.dependencies]
 attrs = ">=21.4.0,<22.0.0"
 cattrs = ">=22.1.0,<23.0.0"
+checksumdir = ">=1.2.0,<2.0.0"
 fastapi = {version = ">=0.78.0,<0.79.0", extras = ["all"]}
 numpy = ">=1.23.0,<2.0.0"
 pycron = ">=3.0.0,<4.0.0"
@@ -503,7 +512,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 [metadata]
 lock-version = "1.1"
 python-versions = ">3.9,<4.0"
-content-hash = "e62ae2278f03ea7e640ae781b4710f5a655882b606e6cb0d9fbdd7e37d34d5fd"
+content-hash = "fc711fcb2c3e825093360a6ce87437fe83605a9e45cb5aa8154f073eca5d8f7b"
 
 [metadata.files]
 anyio = []
@@ -513,6 +522,7 @@ attrs = []
 cattrs = []
 certifi = []
 charset-normalizer = []
+checksumdir = []
 click = []
 colorama = []
 deprecated = []

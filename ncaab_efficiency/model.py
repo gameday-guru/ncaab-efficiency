@@ -41,6 +41,17 @@ def get_new_e(preseason_oe: float, preseason_de: float, avg_game_oe: float, avg_
 def get_new_tempo(preseason_t: float, avg_game_t: float, weight: float):
     return (1-weight)*preseason_t + weight*(avg_game_t)
 
+class RadarDetail(BaseModel):
+    points : int
+    fouls : int
+    two_pointers : int
+    three_pointers : int
+    possessions : int
+
+class RadarEntry(BaseModel):
+    offense : RadarDetail
+    defense : RadarDetail
+
 class ProjectionEntry(BaseModel):
     game_id : int
     home_team_id : int
@@ -171,6 +182,7 @@ async def get_game_efficiency_tables(context, value):
 async def set_game_efficiency_tables(context, value):
     return value
 
+
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_efficiency(e):
     
@@ -286,6 +298,37 @@ async def iterate_efficiency(e):
     await set_game_efficiency_tables(root, game_effs)
     await set_league_efficiency_table(root, eff)
 
+@ncaab_efficiency.get("radar_table", universal, private, t=Dict[str, RadarEntry])
+async def get_radar_table(context, value):
+    return value
+
+@ncaab_efficiency.set("radar_table", universal, private, t=Dict[str, RadarEntry])
+async def set_radar_table(context, value):
+    return value
+
+@ncaab_efficiency.task(valid=days(1))
+async def iterate_radar(e):
+    
+    # get state
+    radar = await get_radar_table(root)
+    radar_out = radar.copy()
+    
+    # Yesterday's games by date
+    lookahead = timedelta.days(1)
+    yesterday = datetime.now() - lookahead
+    yesterday_games = spiodirect.ncaab.games_by_date.get_games(yesterday)
+    
+    # Yesterday's game stats by date
+    team_statlines = spiodirect.ncaab.get_game_stats_by_date(yesterday)
+    team_stats : Dict[tuple[str, str], spiodirect.ncaab.game_stats_by_date.TeamGameStatsByDatelike] = dict()
+    for statline in team_statlines.values():
+        team_stats[(statline.TeamID, statline.GameID)] = statline
+        
+    # Teams who played yesterday
+    teams_yesterday : Dict[str, List[tuple[bool, str, str]]] = dict()
+    for game in yesterday_games:
+        pass
+        
 
 if __name__ == "__main__":
     ncaab_efficiency.start()
