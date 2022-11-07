@@ -76,19 +76,26 @@ ncaab_efficiency = Model(cron_window=1)
 
 def get_seed_league_efficiency(filename : str)->Dict[str, EfficiencyEntry]:
     seed_table : Dict[str, EfficiencyEntry] = dict()
-    for entry in csv.DictReader(filename).read():
-     seed_table[entry["id"]] = EfficiencyEntry(
-        team_id = entry["id"],
-         oe = entry["oe"],
-         de = entry["de"],
-         tempo = entry["tempo"])
+    with open("./preseason_league_efficiency.csv") as f:
+        for entry in csv.DictReader(f):
+            seed_table[entry["id"]] = EfficiencyEntry(
+                team_id = entry["id"] or 0,
+                oe = entry["oe"] or 0,
+                de = entry["de"] or 0,
+                tempo = entry["tempo"] or 0
+            )
     return seed_table
 
 @ncaab_efficiency.task(e = Init)
-async def Init_ncaab(e):
-    preseason_data = get_seed_league_efficiency("/Users/sampark/Documents/GG/ncaab-efficiency/preseason_league.csv")
+async def init_ncaab(e):
+    # trigger again again
+    preseason_data = get_seed_league_efficiency("./preseason_league.csv")
+    print(preseason_data)
     await set_preseason_league_efficiency_table(root, preseason_data)
     await set_league_efficiency_table(root, preseason_data)
+    await set_projection_table(root, {})
+    print(await get_league_efficiency_table(root))
+    await set_radar_table(root, {})
 
 @ncaab_efficiency.get("projection_table", universal, t=Dict[str, ProjectionEntry])
 async def get_projection_table(context, value):
@@ -102,8 +109,9 @@ async def set_projection_table(context, value):
 async def iterate_projection_table(event):
 
     # fix league efficiency at start of iteration
-    eff = await get_league_efficiency_table()
+    eff = await get_league_efficiency_table(root)
     eff_out = eff.copy()
+    print("League efficiency table...", eff)
    
     ptable = await get_projection_table(root)
     ptable_out = ptable.copy()  # ! use this if you want eff to remain to the same throughout iteration
@@ -123,10 +131,6 @@ async def iterate_projection_table(event):
         ppps.append(item.oe)
         ppps.append(item.de)
     ppp_avg = sum(ppps)/len(ppps)
-
-    def projection_entry(**kwargs):
-        for key, value in kwargs.items():
-            ptable_out[key] = value
 
     while iter_date < end_date:
         games = spiodirect.ncaab.games_by_date.get_games(iter_date)
@@ -148,7 +152,7 @@ async def iterate_projection_table(event):
             )
     # TODO: Liam provide more performant redis bindings for this merge.
     # merge 
-    await set_projection_table(root, ptable_out)
+    # await set_projection_table(root, ptable_out)
 
 @ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
 async def get_league_efficiency_table(context, value):
@@ -190,7 +194,7 @@ async def iterate_efficiency(e):
     eff = await get_league_efficiency_table(root)
     eff_out = eff.copy()
     pre_eff = await get_preseason_league_efficiency_table(root)
-    pre_eff_out = pre_eff_out.copy()
+    pre_eff_out = pre_eff.copy()
     game_effs = await get_game_efficiency_tables(root)
     game_effs_out = game_effs.copy()
 
