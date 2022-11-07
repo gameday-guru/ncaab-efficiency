@@ -5,11 +5,14 @@ from gdg_model_builder import Model, \
     poll, days, secs, dow, Event, root, Init
 from pydantic import BaseModel
 import csv
+import json
+
+# please roll over
 
 def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float):
     proj_tempo = home_tempo + away_tempo - tempo_avg
-    home_projection = proj_tempo*(home_oe + away_de - ppp_avg)
-    away_projection = proj_tempo*(away_oe + home_de - ppp_avg)
+    home_projection = proj_tempo*(home_oe + away_de - ppp_avg)/100
+    away_projection = proj_tempo*(away_oe + home_de - ppp_avg)/100
     return (home_projection, away_projection)
 
 def get_game_t(home_tempo: float, away_tempo: float, tempo_avg: float, possessions: int):
@@ -73,6 +76,7 @@ class GameEfficiencyEntry(BaseModel):
     tempo : float
 
 ncaab_efficiency = Model(cron_window=1)
+# ncaab_efficiency.model_hostname = "a"
 
 def get_seed_league_efficiency(filename : str)->Dict[str, EfficiencyEntry]:
     seed_table : Dict[str, EfficiencyEntry] = dict()
@@ -90,11 +94,9 @@ def get_seed_league_efficiency(filename : str)->Dict[str, EfficiencyEntry]:
 async def init_ncaab(e):
     # trigger again again
     preseason_data = get_seed_league_efficiency("./preseason_league.csv")
-    print(preseason_data)
     await set_preseason_league_efficiency_table(root, preseason_data)
     await set_league_efficiency_table(root, preseason_data)
     await set_projection_table(root, {})
-    print(await get_league_efficiency_table(root))
     await set_radar_table(root, {})
 
 @ncaab_efficiency.get("projection_table", universal, t=Dict[str, ProjectionEntry])
@@ -111,13 +113,14 @@ async def iterate_projection_table(event):
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
     eff_out = eff.copy()
-    print("League efficiency table...", eff)
+    with open("./debug.json", "w") as f:
+        f.write(json.dumps(list(eff_out.keys())))
    
     ptable = await get_projection_table(root)
     ptable_out = ptable.copy()  # ! use this if you want eff to remain to the same throughout iteration
    
     # get games from sportsdataio
-    lookahead = timedelta.days(7)
+    lookahead = timedelta(days=7)
     iter_date = datetime.now()
     end_date = iter_date + lookahead
 
@@ -133,14 +136,17 @@ async def iterate_projection_table(event):
     ppp_avg = sum(ppps)/len(ppps)
 
     while iter_date < end_date:
+        iter_date += timedelta(days=1)
         games = spiodirect.ncaab.games_by_date.get_games(iter_date)
         for game in games:
             # do what you need with the games...
             # get_league_efficiency
             # proj_tempo = tempo + opp_tempo - tempo_avg
             # projection = proj_tempo*(oe+de-ppp_avg)/100
-            home_team_score, away_team_score = get_projection(eff_out[game.HomeTeamID].tempo, eff_out[game.AwayTeamID].tempo, tempo_avg, eff_out[game.HomeTeamID].oe, eff_out[game.AwayTeamID].de,
-            eff_out[game.AwayTeamID].oe, eff_out[game.HomeTeamID].de, ppp_avg)
+            if not eff_out.get(str(game.AwayTeamID)) or not eff_out.get(str(game.HomeTeamID)):
+                continue
+            home_team_score, away_team_score = get_projection(eff_out[str(game.HomeTeamID)].tempo, eff_out[str(game.AwayTeamID)].tempo, tempo_avg, eff_out[str(game.HomeTeamID)].oe, eff_out[str(game.AwayTeamID)].de,
+            eff_out[str(game.AwayTeamID)].oe, eff_out[str(game.HomeTeamID)].de, ppp_avg)
             
             # ? ptable_out[game_id] = ...
             ptable_out[game.GameID] = ProjectionEntry(
@@ -152,7 +158,10 @@ async def iterate_projection_table(event):
             )
     # TODO: Liam provide more performant redis bindings for this merge.
     # merge 
-    # await set_projection_table(root, ptable_out)
+    out_dict = dict()
+    for key, value in ptable_out.items():
+        out_dict[key] = value.dict()
+    await set_projection_table(root, ptable_out)
 
 @ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
 async def get_league_efficiency_table(context, value):
@@ -199,7 +208,7 @@ async def iterate_efficiency(e):
     game_effs_out = game_effs.copy()
 
     # Yesterday's games by date
-    lookahead = timedelta.days(1)
+    lookahead = timedelta(days=1)
     yesterday = datetime.now() - lookahead
     yesterday_games = spiodirect.ncaab.games_by_date.get_games(yesterday)
 
@@ -336,3 +345,4 @@ async def iterate_radar(e):
 
 if __name__ == "__main__":
     ncaab_efficiency.start()
+
