@@ -150,7 +150,7 @@ idna = ">=2.0.0"
 
 [[package]]
 name = "exceptiongroup"
-version = "1.0.1"
+version = "1.0.4"
 description = "Backport of PEP 654 (exception groups)"
 category = "main"
 optional = false
@@ -188,7 +188,7 @@ test = ["pytest (>=6.2.4,<7.0.0)", "pytest-cov (>=2.12.0,<4.0.0)", "mypy (==0.91
 
 [[package]]
 name = "gdg-model-builder"
-version = "1.3.14"
+version = "1.4.3"
 description = ""
 category = "main"
 optional = false
@@ -262,7 +262,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "numpy"
-version = "1.23.4"
+version = "1.23.5"
 description = "NumPy is the fundamental package for array computing with Python."
 category = "main"
 optional = false
@@ -270,7 +270,7 @@ python-versions = ">=3.8"
 
 [[package]]
 name = "orjson"
-version = "3.8.1"
+version = "3.8.2"
 description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
 category = "main"
 optional = false
@@ -512,7 +512,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 [metadata]
 lock-version = "1.1"
 python-versions = ">3.9,<4.0"
-content-hash = "fc711fcb2c3e825093360a6ce87437fe83605a9e45cb5aa8154f073eca5d8f7b"
+content-hash = "a3e1804203b980fb158d0a6d187866af8abcef2b683059bba244bad94df26eed"
 
 [metadata.files]
 anyio = []

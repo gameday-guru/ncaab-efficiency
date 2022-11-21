@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List, Dict
+from typing import List, Dict, Optional
 from gdg_model_builder import Model, \
     private, session, spiodirect, universal, \
     poll, days, secs, dow, Event, root, Init
@@ -70,8 +70,18 @@ class RadarDetail(BaseModel):
     TrueShootingAttempts : float
 
 class RadarEntry(BaseModel):
+    team_id : int
     offense : RadarDetail
     defense : RadarDetail
+    
+class TrendDetail(BaseModel):
+    last_rank : Optional[int]
+    current_rank : int
+    
+class TrendEntry(BaseModel):
+    team_id : int
+    ap : TrendDetail
+    gdg_power_rating : TrendDetail
 
 class ProjectionEntry(BaseModel):
     game_id : int
@@ -114,6 +124,7 @@ async def init_ncaab(e):
     preseason_data = get_seed_league_efficiency("./preseason_league.csv")
     await set_preseason_league_efficiency_table(root, preseason_data)
     await set_league_efficiency_table(root, preseason_data)
+    await set_game_efficiency_tables(root, {})
     await set_projection_table(root, {})
     await set_radar_table(root, {})
 
@@ -174,8 +185,6 @@ async def iterate_projection_table(event):
                 home_team_score = home_team_score,
                 away_team_score = away_team_score
             )
-    # TODO: Liam provide more performant redis bindings for this merge.
-    # merge 
     out_dict = dict()
     for key, value in ptable_out.items():
         out_dict[key] = value.dict()
@@ -233,26 +242,13 @@ async def iterate_efficiency(e):
     # Yesterday's game stats by date
     team_statlines = spiodirect.ncaab.get_game_stats_by_date(yesterday)
     team_stats : Dict[tuple[str, str], spiodirect.ncaab.game_stats_by_date.TeamGameStatsByDatelike] = dict()
-    for statline in team_statlines.values():
+    for statline in team_statlines:
         team_stats[(statline.TeamID, statline.GameID)] = statline
-
-    # efficiency and tempo averages
-    game_oe = [eff.game_oe
-    for eff in game_effs[team_id].values()]
-    game_oe_avg = sum(game_oe)/len(game_oe)
-
-    game_de = [eff.game_de
-    for eff in game_effs[team_id].values()]
-    game_de_avg = sum(game_de)/len(game_de)
 
     tempos = []
     for _, item in eff.items():
         tempos.append(item.tempo)
     tempo_avg = sum(tempos)/len(tempos)
-
-    game_t = [eff.tempo
-    for eff in game_effs[team_id].values()]
-    game_t_avg = sum(game_t)/len(game_t)
 
     # Teams who played yesterday
     teams_yesterday : Dict[str, List[tuple[bool, str, str]]] = dict()
@@ -270,6 +266,17 @@ async def iterate_efficiency(e):
     for team_id, eff in eff_out.items():
         
         # ? eff[team_id] = ... 
+        game_oe = [eff.oe
+        for eff in game_effs[team_id].values()]
+        game_oe_avg = sum(game_oe)/len(game_oe)
+
+        game_de = [eff.de
+        for eff in game_effs[team_id].values()]
+        game_de_avg = sum(game_de)/len(game_de)
+        
+        game_t = [eff.tempo
+        for eff in game_effs[team_id].values()]
+        game_t_avg = sum(game_t)/len(game_t)
         
         weight_e = get_weight_e(game_effs.game_id.count())
         league_oe, league_de = get_new_e(pre_eff[team_id].oe, pre_eff[team_id].de, game_oe_avg, game_de_avg, weight_e)
@@ -309,10 +316,10 @@ async def iterate_efficiency(e):
                         game_de = game.HomeTeamScore/team_stats[(game_id, team_id)].Possessions/((1.014 * eff[game.HomeTeamID].oe)/ppp_avg),
                         tempo = away_game_t
                     )
-                    
+    
     # merge 
-    await set_game_efficiency_tables(root, game_effs)
-    await set_league_efficiency_table(root, eff)
+    await set_game_efficiency_tables(root, game_effs_out)
+    await set_league_efficiency_table(root, eff_out)
 
 @ncaab_efficiency.get("radar_table", universal, private, t=Dict[str, RadarEntry])
 async def get_radar_table(context, value):
@@ -322,33 +329,42 @@ async def get_radar_table(context, value):
 async def set_radar_table(context, value):
     return value
 
-def handle_radar_for_statline(radar, statline):
+def handle_radar_for_statline(radar : Dict[str, RadarEntry], statline : spiodirect.ncaab.game_stats_by_date.TeamGameStatsByDate):
+    """Takes a statline an makes updates to the radar table.
+
+    Args:
+        radar (Dict[str, RadarEntry]): _description_
+        statline (spiodirect.ncaab.game_stats_by_date.TeamGameStatsByDate): _description_
+    """
     
-    statline_dict = statline.as_dict()
+    statline_dict = statline.dict()
     
-    team = radar[statline.TeamID]
-    opponent = radar[statline.OpponentID]
+    team = radar[str(statline.TeamID)]
+    opponent = radar[str(statline.OpponentID)]
     
     team_updated_dict =  {
-        k : v + statline_dict[k] for (k, v) in team.offense.as_dict().entries()
+        k : v + statline_dict[k] for (k, v) in team.offense.dict().items()
     }
-    radar[statline.TeamID] = RadarEntry(
+    radar[str(statline.TeamID)] = RadarEntry(
+        team_id=statline.TeamID,
         offense=RadarDetail(**team_updated_dict),
-        defense=radar[statline.TeamID].defense
+        defense=radar[str(statline.TeamID)].defense
     )
     
     opponent_updated_dict =  {
-        k : v + statline_dict[k] for (k, v) in opponent.defense.as_dict().entries()
+        k : v + statline_dict[k] for (k, v) in opponent.defense.dict().items()
     }
-    radar[statline.TeamID] = RadarEntry(
-        offense=radar[statline.OpponentID].offense,
+    radar[str(statline.OpponentID)] = RadarEntry(
+        team_id=statline.OpponentID,
+        offense=radar[str(statline.OpponentID)].offense,
         defense=RadarDetail(**opponent_updated_dict)
     )
-    
     
 
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_radar(e):
+    
+    print("Running radar!")
     
     # get state
     radar = await get_radar_table(root)
@@ -358,13 +374,78 @@ async def iterate_radar(e):
     lookahead = timedelta.days(1)
     yesterday = datetime.now() - lookahead
     team_statlines = spiodirect.ncaab.get_game_stats_by_date(yesterday)
-    for statline in team_statlines.values():
+    for statline in team_statlines:
         handle_radar_for_statline(radar, statline)
         
     await set_radar_table(root, radar_out)
-        
-        
+  
+@ncaab_efficiency.get("trend_table", universal, private, t=Dict[str, TrendEntry])
+async def get_trend_table(context, value):
+    return value
+
+@ncaab_efficiency.set("trned_table", universal, private, t=Dict[str, TrendEntry])
+async def set_trend_table(context, value):
+    return value
+      
+def compare_power_rating(a : EfficiencyEntry, b : EfficiencyEntry)->int:
+    return  (b.oe - b.de) - (a.oe - a.de)   
+
+def compare_ap_rank(a : spiodirect.ncaab.team.Teamlike, b : spiodirect.ncaab.team.Teamlike)->int:
+    return  a.ApRank - b.ApRank
+
+@ncaab_efficiency.task(valid=days(1))
+async def iterate_trend(e):
+    
+    # get state
+    eff = await get_league_efficiency_table(root)
+    eff_out = eff.copy()
+    trend = await get_trend_table(root)
+    trend_out = trend.copy()
+    teams = await spiodirect.ncaab.get_teams()
+    
+    power_ratings_order : List[EfficiencyEntry] = sorted(eff_out.values(), compare_power_rating)
+    for i, entry in enumerate(power_ratings_order):
+        last = trend_out.get(entry.team_id)
+        if last is not None:
+            trend_out[entry.team_id] = TrendEntry(
+               team_id=entry.team_id,
+               ap=last.ap,
+               gdg_power_rating=TrendDetail(
+                   last_rank=last.gdg_power_rating.current_rank,
+                   current_rank=i
+               )
+            )
+        else:
+            trend_out[entry.team_id] = TrendEntry(
+               team_id=entry.team_id,
+               gdg_power_rating=TrendDetail(
+                   current_rank=i
+               )
+            )
+            
+    ap_rank_order : List[spiodirect.ncaab.team.Teamlike] = sorted(teams, compare_ap_rank)
+    for i, entry in enumerate(ap_rank_order):
+        last = trend_out.get(entry.team_id)
+        if last is not None:
+            trend_out[entry.TeamID] = TrendEntry(
+               team_id=entry.TeamID,
+               ap=TrendDetail(
+                   last_rank=last.ap.current_rank,
+                   current_rank=i
+               ),
+               gdg_power_rating=last.gdg_power_rating
+            )
+        else:
+            trend_out[entry.TeamID] = TrendEntry(
+               team_id=entry.TeamID,
+               ap_rank_order=TrendDetail(
+                   current_rank=i
+               )
+            )
+    
+    await set_trend_table(root, trend_out)
 
 if __name__ == "__main__":
+    ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
     ncaab_efficiency.start()
 
