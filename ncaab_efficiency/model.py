@@ -11,8 +11,8 @@ import json
 
 def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float):
     proj_tempo = home_tempo + away_tempo - tempo_avg
-    home_projection = proj_tempo*(home_oe + away_de - ppp_avg)/100
-    away_projection = proj_tempo*(away_oe + home_de - ppp_avg)/100
+    home_projection = proj_tempo*((1.014 * 1.12 * home_oe) + (1.014 * 0.88 * away_de) - ppp_avg)
+    away_projection = proj_tempo*((0.986 * 1.12 * away_oe) + (0.986 * 0.88 * home_de) - ppp_avg)
     return (home_projection, away_projection)
 
 def get_game_t(home_tempo: float, away_tempo: float, tempo_avg: float, possessions: int):
@@ -281,21 +281,26 @@ async def iterate_efficiency(e):
         
         if team_id in teams_yesterday:
             for is_home, game_id in teams_yesterday[team_id]:
-                home_game_t, away_game_t = get_game_t(eff[game.HomeTeamID].tempo, eff[game.AwayTeamID].tempo, tempo_avg, team_statlines.Possessions)
+                if team_stats[(game_id, team_id)].Possessions is None:
+                    possessions = (team_stats[(game_id, team_id)].FieldGoalsAttempted - team_stats[(game_id, team_id)].OffensiveRebounds
+                                   + team_stats[(game_id, team_id)].Turnovers + (.475 * team_stats[(game_id, team_id)].FreeThrowsAttempted))
+                else:
+                    possessions = team_stats[(game_id, team_id)].Possessions
+                home_game_t, away_game_t = get_game_t(eff[game.HomeTeamID].tempo, eff[game.AwayTeamID].tempo, tempo_avg, possessions)
                 if is_home == True:
                     game_effs_out[team_id][game_id] = GameEfficiencyEntry(
                         team_id = team_id,
                         game_id = game_id,
-                        game_oe = 1.014 * game.HomeTeamScore/team_stats[(game_id, team_id)].Possessions,
-                        game_de = 1.014 * game.AwayTeamScore/team_stats[(game_id, team_id)].Possessions,
+                        game_oe = game.HomeTeamScore/team_stats[(game_id, team_id)].Possessions/((1.014 * eff[game.AwayTeamID].de)/ppp_avg),
+                        game_de = game.AwayTeamScore/team_stats[(game_id, team_id)].Possessions/((0.986 * eff[game.AwayTeamID].oe)/ppp_avg),
                         tempo = home_game_t
                     )
                 if is_home == False:
                     game_effs_out[team_id][game_id] = GameEfficiencyEntry(
                         team_id = team_id,
                         game_id = game_id,
-                        game_oe = 0.986 * game.AwayTeamScore/team_stats[(game_id, team_id)].Possessions,
-                        game_de = 0.986 * game.HomeTeamScore/team_stats[(game_id, team_id)].Possessions,
+                        game_oe = game.AwayTeamScore/team_stats[(game_id, team_id)].Possessions/((0.986 * eff[game.HomeTeamID].de)/ppp_avg),
+                        game_de = game.HomeTeamScore/team_stats[(game_id, team_id)].Possessions/((1.014 * eff[game.HomeTeamID].oe)/ppp_avg),
                         tempo = away_game_t
                     )
         # add game efficiency
