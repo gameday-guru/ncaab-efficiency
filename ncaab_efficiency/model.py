@@ -45,11 +45,29 @@ def get_new_tempo(preseason_t: float, avg_game_t: float, weight: float):
     return (1-weight)*preseason_t + weight*(avg_game_t)
 
 class RadarDetail(BaseModel):
-    points : int
-    fouls : int
-    two_pointers : int
-    three_pointers : int
-    possessions : int
+    
+    class Config:
+        extra = "ignore" # teall pydantic to ignore the extra fields
+    
+    FieldGoalsMade : int
+    FieldGoalsAttempted : int
+    TwoPointersMade : int
+    TwoPointersAttempted : int
+    TwoPointersPercentage : float
+    ThreePointersMade : int
+    ThreePointersAttempted : int
+    FreeThrowsMade : int
+    FreeThrowsAttempted : int
+    OffensiveRebounds : int
+    DefensiveRebounds : int
+    Rebounds : int
+    Assists : int
+    Steals : int
+    BlockedShots : int
+    Turnovers : int
+    PersonalFouls : int
+    Points : Optional[int]
+    TrueShootingAttempts : float
 
 class RadarEntry(BaseModel):
     offense : RadarDetail
@@ -250,18 +268,6 @@ async def iterate_efficiency(e):
         teams_yesterday[game.AwayTeamID].append((False, game.GameID, game.HomeTeamID))
 
     for team_id, eff in eff_out.items():
-        # adjust update
-        
-        # you will want to call set efficiency from here
-        # Season efficiency will be weighted avg between preseason and in game efficiencies
-        # preseason weight starts at 1 and decreases by .04 after each game until .08, then will stay static at .06 for the remainder of the season
-        
-        # count all game values first and multiply by .04 to get weight (upper bound .92; if >.92, weight = .94)
-        # 1-(weight) = preseason weight
-        # season efficiency = preseason weight(preseason value) + game weight(AVG(game values))
-        
-        # oe = (1-weight)*preseason_oe + weight*(AVG(game_efficiency_table[game_oe]))
-        # de = (1-weight)*preseason_de + weight*(AVG(game_efficiency_table[game_de]))
         
         # ? eff[team_id] = ... 
         
@@ -303,15 +309,7 @@ async def iterate_efficiency(e):
                         game_de = game.HomeTeamScore/team_stats[(game_id, team_id)].Possessions/((1.014 * eff[game.HomeTeamID].oe)/ppp_avg),
                         tempo = away_game_t
                     )
-        # add game efficiency
-
-        # check if team had a game yesterday/game was finished
-        # if game.date == yesterday or last_game.finished: 
-            # add to game_tables
-            # ? game_effs[team_id][game.id] = ...
-        pass
-        
-    # TODO: Liam provide more performant redis bindings for this merge.
+                    
     # merge 
     await set_game_efficiency_tables(root, game_effs)
     await set_league_efficiency_table(root, eff)
@@ -324,6 +322,31 @@ async def get_radar_table(context, value):
 async def set_radar_table(context, value):
     return value
 
+def handle_radar_for_statline(radar, statline):
+    
+    statline_dict = statline.as_dict()
+    
+    team = radar[statline.TeamID]
+    opponent = radar[statline.OpponentID]
+    
+    team_updated_dict =  {
+        k : v + statline_dict[k] for (k, v) in team.offense.as_dict().entries()
+    }
+    radar[statline.TeamID] = RadarEntry(
+        offense=RadarDetail(**team_updated_dict),
+        defense=radar[statline.TeamID].defense
+    )
+    
+    opponent_updated_dict =  {
+        k : v + statline_dict[k] for (k, v) in opponent.defense.as_dict().entries()
+    }
+    radar[statline.TeamID] = RadarEntry(
+        offense=radar[statline.OpponentID].offense,
+        defense=RadarDetail(**opponent_updated_dict)
+    )
+    
+    
+
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_radar(e):
     
@@ -331,21 +354,15 @@ async def iterate_radar(e):
     radar = await get_radar_table(root)
     radar_out = radar.copy()
     
-    # Yesterday's games by date
+    # Yesterday's statlines by date
     lookahead = timedelta.days(1)
     yesterday = datetime.now() - lookahead
-    yesterday_games = spiodirect.ncaab.games_by_date.get_games(yesterday)
-    
-    # Yesterday's game stats by date
     team_statlines = spiodirect.ncaab.get_game_stats_by_date(yesterday)
-    team_stats : Dict[tuple[str, str], spiodirect.ncaab.game_stats_by_date.TeamGameStatsByDatelike] = dict()
     for statline in team_statlines.values():
-        team_stats[(statline.TeamID, statline.GameID)] = statline
+        handle_radar_for_statline(radar, statline)
         
-    # Teams who played yesterday
-    teams_yesterday : Dict[str, List[tuple[bool, str, str]]] = dict()
-    for game in yesterday_games:
-        pass
+    await set_radar_table(root, radar_out)
+        
         
 
 if __name__ == "__main__":
