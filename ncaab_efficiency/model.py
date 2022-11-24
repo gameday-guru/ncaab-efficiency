@@ -8,15 +8,27 @@ import csv
 import json
 from stats import get_possession_from_statline
 
-def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float):
+def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float , neutral : bool = False):
+
     proj_tempo = home_tempo + away_tempo - tempo_avg
-    home_projection = (proj_tempo*((1.014 * home_oe) + (1.014 * away_de) - ppp_avg))/100
-    away_projection = (proj_tempo*((0.986  * away_oe) + (0.986 * home_de) - ppp_avg))/100
+    if neutral:
+        home_projection = (proj_tempo*((1.12 * home_oe) + (.88 * away_de) - ppp_avg))/100
+        away_projection = (proj_tempo*((1.12 * away_oe) + (.88 * home_de) - ppp_avg))/100
+        return (home_projection, away_projection)
+        
+    home_projection = (proj_tempo*((1.014 * 1.12 * home_oe) + (1.014 * .88 * away_de) - ppp_avg))/100
+    away_projection = (proj_tempo*((0.986  * 1.12 * away_oe) + (0.986 * .88 * home_de) - ppp_avg))/100
     return (home_projection, away_projection)
 
-def get_game_t(home_tempo: float, away_tempo: float, tempo_avg: float, possessions: int):
+GAME_LOG_OUT = False
+
+def get_game_t(home_tempo: float, away_tempo: float, tempo_avg: float, possessions: float):
+    
+    if possessions < 1:
+        return (home_tempo, away_tempo)
+    
     proj_tempo = home_tempo + away_tempo - tempo_avg
-    factor = (1 + (possessions - proj_tempo)/(2 * possessions)) if possessions > 0 else 1
+    factor = (1 + (possessions - proj_tempo)/(2 * possessions)) 
     home_game_t = home_tempo * factor
     away_game_t = away_tempo * factor
     return (home_game_t, away_game_t)
@@ -36,13 +48,13 @@ def get_weight_t(n_games: int):
     return weight
 
 def get_new_e(preseason_oe: float, preseason_de: float, avg_game_oe: float, avg_game_de: float, weight: float):
-    oe = ((1-weight)*preseason_oe + weight*(avg_game_oe)) * 1.12
-    de = ((1-weight)*preseason_de + weight*(avg_game_de)) * 1.12
+    oe = ((1-weight)*preseason_oe + weight*(avg_game_oe))
+    de = ((1-weight)*preseason_de + weight*(avg_game_de)) 
     # print("Preseason coefficient: ",  1-weight, oe, de, preseason_de, preseason_oe, avg_game_de, avg_game_oe)
     return (oe, de)
 
 def get_new_tempo(preseason_t: float, avg_game_t: float, weight: float):
-    return (1-weight)*preseason_t + weight*(avg_game_t)
+    return ((1-weight)*preseason_t) + (weight*(avg_game_t))
 
 class RadarDetail(BaseModel):
     
@@ -180,6 +192,7 @@ async def iterate_projection_table(event):
     for _, item in eff_out.items():
         tempos.append(item.tempo)
     tempo_avg = sum(tempos)/len(tempos)
+    print(tempo_avg)
 
     ppps = []
     for _, item in eff_out.items():
@@ -205,8 +218,10 @@ async def iterate_projection_table(event):
             if str(game.AwayTeamID) not in eff_out:
                 eff_out[str(game.AwayTeamID)] = get_median_efficiency_entry(game.AwayTeamID)
             
+            if game.GameID == 50219:
+                print("Neutral: ", game.NeutralVenue)
             home_team_score, away_team_score = get_projection(eff_out[str(game.HomeTeamID)].tempo, eff_out[str(game.AwayTeamID)].tempo, tempo_avg, eff_out[str(game.HomeTeamID)].oe, eff_out[str(game.AwayTeamID)].de,
-            eff_out[str(game.AwayTeamID)].oe, eff_out[str(game.HomeTeamID)].de, ppp_avg)
+            eff_out[str(game.AwayTeamID)].oe, eff_out[str(game.HomeTeamID)].de, ppp_avg, game.NeutralVenue)
             
             # ? ptable_out[game_id] = ...
             ptable_out[game.GameID] = ProjectionEntry(
@@ -347,12 +362,16 @@ def update_team_efficiencies(*,
         away_possessions = get_possession_from_statline(
             team_stats[(str(game.GameID), str(away_team_id))]
         )
+    if game_id == "45846":
+        print("POSESSIONS:", home_possessions, away_possessions)
     
     home_game_t, away_game_t = get_game_t(
         eff_table[home_team_id].tempo, 
         eff_table[away_team_id].tempo, 
         tempo_avg, home_possessions + away_possessions # TODO: possessions vs. home possesions, what's the diff?
     )
+    
+    print(home_game_t, away_game_t)
     
     if (
         game.HomeTeamScore is not None and game.AwayTeamScore is not None
@@ -410,8 +429,6 @@ def update_team_efficiencies(*,
 
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_efficiency(e):
-    
-    print("Iterating efficiency...")
     
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
@@ -479,7 +496,6 @@ async def iterate_efficiency(e):
         writer = csv.writer(projection)
         count = 0
         for team in game_effs_out:
-            print("Game efficiencies for...", team)
             for game_entry in game_effs_out[team]:   
                 if count == 0:
                     # Writing headers of CSV file
@@ -488,13 +504,10 @@ async def iterate_efficiency(e):
                     header = d.keys()
                     writer.writerow(header)
                     count += 1
-                print("Game entries for...")
                 # Writing data of CSV file
                 d = game_effs_out[team][game_entry].dict()
                 d["team"] = team
                 writer.writerow(d.values())
-    
-    print("Iterated effieciency!")
 
 @ncaab_efficiency.get("radar_table", universal, private, t=Dict[str, RadarEntry])
 async def get_radar_table(context, value):
