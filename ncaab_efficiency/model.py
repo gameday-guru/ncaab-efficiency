@@ -382,15 +382,15 @@ def update_team_efficiencies(*,
             team_id = home_team_id,
             game_id = game.GameID,
             game_oe = ((game.HomeTeamScore/(home_possessions))/((1.014 * eff_table[away_team_id].de)/ppp_avg)),
-            game_de = ((game.AwayTeamScore/(away_possessions))/((0.986 * eff_table[home_team_id].oe)/ppp_avg)),
+            game_de = ((game.AwayTeamScore/(away_possessions))/((0.986 * eff_table[away_team_id].oe)/ppp_avg)),
             tempo = home_game_t
         )
         
         game_eff_table_out[away_team_id][game_id] = GameEfficiencyEntry(
             team_id = away_team_id,
-            game_id = game_id,
+            game_id = game.GameID,
             game_oe = ((game.AwayTeamScore/(away_possessions))/((0.986 * eff_table[home_team_id].de)/ppp_avg)),
-            game_de = ((game.HomeTeamScore/(home_possessions))/((1.014 * eff_table[away_team_id].oe)/ppp_avg)),
+            game_de = ((game.HomeTeamScore/(home_possessions))/((1.014 * eff_table[home_team_id].oe)/ppp_avg)),
             tempo = away_game_t
         )
         
