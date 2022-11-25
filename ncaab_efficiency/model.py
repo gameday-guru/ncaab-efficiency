@@ -22,16 +22,16 @@ def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_
 
 GAME_LOG_OUT = False
 
-def get_game_t(home_tempo: float, away_tempo: float, tempo_avg: float, possessions: float):
+def get_game_t(tempo: float, oppontent_tempo: float, tempo_avg: float, possessions: float):
     
     if possessions < 1:
-        return (home_tempo, away_tempo)
+        return tempo
     
-    proj_tempo = home_tempo + away_tempo - tempo_avg
+    proj_tempo = tempo + oppontent_tempo - tempo_avg
     factor = (1 + (possessions - proj_tempo)/(2 * possessions)) 
-    home_game_t = home_tempo * factor
-    away_game_t = away_tempo * factor
-    return (home_game_t, away_game_t)
+    game_t = tempo * factor
+    
+    return game_t
 
 def get_weight_e(n_games: int):
     if n_games <= 23:
@@ -116,7 +116,6 @@ class GameEfficiencyEntry(BaseModel):
     tempo : float
 
 ncaab_efficiency = Model(cron_window=1)
-# ncaab_efficiency.model_hostname = "a"
 
 def get_median_efficiency_entry(team_id : int):
     return EfficiencyEntry(
@@ -217,9 +216,7 @@ async def iterate_projection_table(event):
                 
             if str(game.AwayTeamID) not in eff_out:
                 eff_out[str(game.AwayTeamID)] = get_median_efficiency_entry(game.AwayTeamID)
-            
-            if game.GameID == 50219:
-                print("Neutral: ", game.NeutralVenue)
+        
             home_team_score, away_team_score = get_projection(eff_out[str(game.HomeTeamID)].tempo, eff_out[str(game.AwayTeamID)].tempo, tempo_avg, eff_out[str(game.HomeTeamID)].oe, eff_out[str(game.AwayTeamID)].de,
             eff_out[str(game.AwayTeamID)].oe, eff_out[str(game.HomeTeamID)].de, ppp_avg, game.NeutralVenue)
             
@@ -362,16 +359,18 @@ def update_team_efficiencies(*,
         away_possessions = get_possession_from_statline(
             team_stats[(str(game.GameID), str(away_team_id))]
         )
-    if game_id == "45846":
-        print("POSESSIONS:", home_possessions, away_possessions)
     
-    home_game_t, away_game_t = get_game_t(
+    home_game_t = get_game_t(
         eff_table[home_team_id].tempo, 
         eff_table[away_team_id].tempo, 
-        tempo_avg, home_possessions + away_possessions # TODO: possessions vs. home possesions, what's the diff?
+        tempo_avg, home_possessions # TODO: possessions vs. home possesions, what's the diff?
     )
     
-    print(home_game_t, away_game_t)
+    away_game_t = get_game_t(
+        eff_table[away_team_id].tempo, 
+        eff_table[home_team_id].tempo, 
+        tempo_avg, away_possessions # TODO: possessions vs. home possesions, what's the diff?
+    )
     
     if (
         game.HomeTeamScore is not None and game.AwayTeamScore is not None
@@ -584,7 +583,7 @@ async def set_trend_table(context, value):
     return value
       
 def compare_power_rating(a : EfficiencyEntry)->int:
-    return  a.oe - a.de   
+    return  .56 * a.oe - .55 * a.de   
 
 def compare_ap_rank(a : spiodirect.ncaab.team.Teamlike)->int:
     return  a.ApRank or 100
