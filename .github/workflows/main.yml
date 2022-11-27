@@ -45,7 +45,12 @@ jobs:
            AWS_ACCOUNT_ID : ${{ secrets.AWS_ACCOUNT_ID }}
            AWS_REGION : ${{ secrets.AWS_REGION }}  
       
-        
+      - name: Get the version
+      run: echo "VERSION=$(poetry version --short)" >> $GITHUB_ENV
+      env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_AUTH_TOKEN : ${{ secrets.NPM_AUTH_TOKEN }}
+      
       - name: Build image and push to ECR.
         run: ./.docker/alpine-august-tiger/alpine-august-tiger.sh
         env: 
