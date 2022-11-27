@@ -1,0 +1,68 @@
+name: 'build'
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-alpine-august-tiger:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-18.04]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - run: ls && pwd
+      
+      - run: |  
+          cat > alpine-august-tiger.env << EOF 
+          NPM_AUTH_TOKEN="${{ secrets.NPM_AUTH_TOKEN }}"
+          EOF
+          
+      - name: setup node
+        uses: actions/setup-node@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_SECRET_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-west-1
+          
+      - name: Bump version
+        run : git config --global user.email "operations@gdg.com" && git config --global user.name "Gameday Guru Inc" && yarn version --patch
+        env:
+           NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          
+      - name: Login to ECR via docker
+        run : aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        env: 
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           AWS_ACCOUNT_ID : ${{ secrets.AWS_ACCOUNT_ID }}
+           AWS_REGION : ${{ secrets.AWS_REGION }}  
+          
+      - name: Get the version
+        run: echo "VERSION=$(node -e "console.log(require('./package.json').version);")" >> $GITHUB_ENV
+        env: 
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           NPM_AUTH_TOKEN : ${{ secrets.NPM_AUTH_TOKEN }}
+        
+      - name: Build image and push to ECR.
+        run: ./.docker/alpine-august-tiger/alpine-august-tiger.sh
+        env: 
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           AWS_ACCOUNT_ID : ${{ secrets.AWS_ACCOUNT_ID }}
+           AWS_REGION : ${{ secrets.AWS_REGION }}
+           ECR_REGISTRY_NAME : ${{ secrets.ECR_REGISTRY_NAME }}
+           CONTAINER_NAME : "gdg-ncaab-efficiency"
+           VERSION : ${{ env.VERSION }}
