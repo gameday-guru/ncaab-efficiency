@@ -60,8 +60,11 @@ docker compose -f ./.docker/alpine-august-tiger/alpine-august-tiger.yml build
 docker image ls
 docker image ls | grep ${CONTAINER_NAME}
 docker tag ${CONTAINER_NAME}:${VERSION} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CONTAINER_NAME}:${VERSION}
+docker image ls
 docker tag ${CONTAINER_NAME}:${VERSION} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CONTAINER_NAME}:latest
+docker image ls
 docker tag ${CONTAINER_NAME}:${VERSION} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CONTAINER_NAME}:alpine-august-tiger
+docker image ls
 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CONTAINER_NAME}:${VERSION}
 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CONTAINER_NAME}:latest
 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CONTAINER_NAME}:alpine-august-tiger
