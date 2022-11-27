@@ -39,11 +39,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: us-west-1
           
-      - name: Bump version
-        run : git config --global user.email "operations@gdg.com" && git config --global user.name "Gameday Guru Inc" && yarn version --patch
-        env:
-           NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-          
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - run: poetry version patch
       - name: Login to ECR via docker
         run : aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         env: 
