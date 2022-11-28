@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import csv
 import json
 from stats import get_possession_from_statline
+import redis
 
 def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float , neutral : bool = False):
 
@@ -115,7 +116,10 @@ class GameEfficiencyEntry(BaseModel):
     game_de : float
     tempo : float
 
-ncaab_efficiency = Model(cron_window=1)
+ncaab_efficiency = Model(
+    store=redis.Redis(host='redis', port=6379, db=0),
+    cron_window=1
+)
 
 def get_median_efficiency_entry(team_id : int):
     return EfficiencyEntry(

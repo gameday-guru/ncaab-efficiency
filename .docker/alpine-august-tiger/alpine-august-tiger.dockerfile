@@ -54,7 +54,8 @@
 # Governing Law
 # This EULA agreement, and any dispute arising out of or in connection with this EULA agreement, shall be governed by and construed in accordance with the laws of us.
 FROM ubuntu:18.04
-COPY . .
+COPY . /app
+WORKDIR /app
 
 # dependencies
 RUN apt update && apt upgrade -y
@@ -62,17 +63,28 @@ RUN apt install software-properties-common -y
 RUN add-apt-repository ppa:deadsnakes/ppa -y
 RUN apt-get install python3.10-full -y
 RUN apt install python3.10-venv
-RUN apt install redis -y
-RUN curl -sSL https://install.python-poetry.org | python3 -
 
-# redis
-RUN redis-server --daemonize yes
+# poetry
+ENV POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_VIRTUALENVS_IN_PROJECT=false \
+    POETRY_NO_INTERACTION=1 
+ENV PATH="$PATH:$POETRY_HOME/bin"
+RUN apt-get update && apt-get install --no-install-recommends -y curl \
+    && curl -sSL https://install.python-poetry.org | python3.10 -
+# Update poetry to latest version
+RUN poetry self update
 
 # venv
-RUN python3.10 -m venv venv
-SHELL ["/bin/bash", "-c", "source ./venv/bin/activate"]
-RUN poetry install
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3.10 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PATH="${PATH}:/root/.local/bin"
+RUN ${POETRY_HOME}/bin/poetry install
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONENCODING="UTF-8"
 
 # entry point
 USER 1000
-CMD ["python", "ncaab_efficiency/model.py"]
+CMD ["python", "-u", "./ncaab_efficiency/model.py"]
