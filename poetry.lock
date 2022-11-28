@@ -188,7 +188,7 @@ test = ["pytest (>=6.2.4,<7.0.0)", "pytest-cov (>=2.12.0,<4.0.0)", "mypy (==0.91
 
 [[package]]
 name = "gdg-model-builder"
-version = "1.4.7"
+version = "1.4.8"
 description = ""
 category = "main"
 optional = false
@@ -512,7 +512,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 [metadata]
 lock-version = "1.1"
 python-versions = ">3.9,<4.0"
-content-hash = "d032446de0efa7ce763353c4fa5a3c7a4d1f6b5c1b8a40e58c277b04166bc790"
+content-hash = "0ba3c49ea325928e958f909fc5d48f3d3eb79ba4159cbd3dd3a87f83300746d3"
 
 [metadata.files]
 anyio = []
