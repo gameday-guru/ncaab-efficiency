@@ -380,8 +380,8 @@ def update_team_efficiencies(*,
         and home_possessions > 0 and away_possessions > 0
     ):
         
-        home_factor = 1.014 if game.NeutralVenue else 1.0
-        away_factor = 0.986 if game.NeutralVenue else 1.0
+        home_factor = 1.0 if game.NeutralVenue else 1.014
+        away_factor = 1.0 if game.NeutralVenue else 0.986
         
         game_eff_table_out[home_team_id][game_id] = GameEfficiencyEntry(
             team_id = home_team_id,
