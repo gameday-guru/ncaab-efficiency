@@ -117,7 +117,6 @@ class GameEfficiencyEntry(BaseModel):
     tempo : float
 
 ncaab_efficiency = Model(
-    store=redis.Redis(host='redis', port=6379, db=0),
     cron_window=1
 )
 
