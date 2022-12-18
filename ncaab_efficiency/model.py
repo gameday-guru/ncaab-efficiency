@@ -9,6 +9,8 @@ import json
 from stats import get_possession_from_statline
 import redis
 
+WRITE_BACKUPS : bool = False
+
 def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float , neutral : bool = False):
 
     proj_tempo = home_tempo + away_tempo - tempo_avg
