@@ -180,8 +180,10 @@ async def iterate_projection_table(event):
     eff = await get_league_efficiency_table(root)
     pre_eff = await get_preseason_league_efficiency_table(root)
     eff_out = eff.copy()
-    with open("./debug.json", "w") as f:
-        f.write(json.dumps(list(eff_out.keys())))
+    
+    if WRITE_BACKUPS:
+        with open("./debug.json", "w") as f:
+            f.write(json.dumps(list(eff_out.keys())))
    
     ptable = await get_projection_table(root)
     ptable_out = ptable.copy()  # ! use this if you want eff to remain to the same throughout iteration
@@ -238,19 +240,20 @@ async def iterate_projection_table(event):
         out_dict[key] = value.dict()
     await set_projection_table(root, ptable_out)
     
-    with open('projection_backup.csv', 'w') as projection:
-        writer = csv.writer(projection)
-        count = 0
-        for entry in ptable_out:
-            if count == 0:
-        
-                # Writing headers of CSV file
-                header = ptable_out[entry].dict().keys()
-                writer.writerow(header)
-                count += 1
-        
-            # Writing data of CSV file
-            writer.writerow(ptable_out[entry].dict().values())
+    if WRITE_BACKUPS:
+        with open('projection_backup.csv', 'w') as projection:
+            writer = csv.writer(projection)
+            count = 0
+            for entry in ptable_out:
+                if count == 0:
+            
+                    # Writing headers of CSV file
+                    header = ptable_out[entry].dict().keys()
+                    writer.writerow(header)
+                    count += 1
+            
+                # Writing data of CSV file
+                writer.writerow(ptable_out[entry].dict().values())
     print("Finished projection iteration!")
 
 @ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
@@ -484,36 +487,38 @@ async def iterate_efficiency(e):
     await set_game_efficiency_tables(root, game_effs_out)
     await set_league_efficiency_table(root, eff_out)
     
-    with open('efficiency_backup.csv', 'w') as projection:
-        writer = csv.writer(projection)
-        count = 0
-        for entry in eff_out:
-            if count == 0:
-        
-                # Writing headers of CSV file
-                header = eff_out[entry].dict().keys()
-                writer.writerow(header)
-                count += 1
-        
-            # Writing data of CSV file
-            writer.writerow(eff_out[entry].dict().values())
-            
-    with open('game_efficiency_backup.csv', 'w') as projection:
-        writer = csv.writer(projection)
-        count = 0
-        for team in game_effs_out:
-            for game_entry in game_effs_out[team]:   
+    if WRITE_BACKUPS:
+        with open('efficiency_backup.csv', 'w') as projection:
+            writer = csv.writer(projection)
+            count = 0
+            for entry in eff_out:
                 if count == 0:
+            
                     # Writing headers of CSV file
-                    d = game_effs_out[team][game_entry].dict()
-                    d["team"] = team
-                    header = d.keys()
+                    header = eff_out[entry].dict().keys()
                     writer.writerow(header)
                     count += 1
+            
                 # Writing data of CSV file
-                d = game_effs_out[team][game_entry].dict()
-                d["team"] = team
-                writer.writerow(d.values())
+                writer.writerow(eff_out[entry].dict().values())
+           
+    if WRITE_BACKUPS:
+        with open('game_efficiency_backup.csv', 'w') as projection:
+            writer = csv.writer(projection)
+            count = 0
+            for team in game_effs_out:
+                for game_entry in game_effs_out[team]:   
+                    if count == 0:
+                        # Writing headers of CSV file
+                        d = game_effs_out[team][game_entry].dict()
+                        d["team"] = team
+                        header = d.keys()
+                        writer.writerow(header)
+                        count += 1
+                    # Writing data of CSV file
+                    d = game_effs_out[team][game_entry].dict()
+                    d["team"] = team
+                    writer.writerow(d.values())
 
 @ncaab_efficiency.get("radar_table", universal, private, t=Dict[str, RadarEntry])
 async def get_radar_table(context, value):
