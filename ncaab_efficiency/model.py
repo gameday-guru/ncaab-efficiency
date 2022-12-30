@@ -520,11 +520,11 @@ async def iterate_efficiency(e):
                     d["team"] = team
                     writer.writerow(d.values())
 
-@ncaab_efficiency.get("radar_table", universal, private, t=Dict[str, RadarEntry])
+@ncaab_efficiency.get("radar_table", universal, t=Dict[str, RadarEntry])
 async def get_radar_table(context, value):
     return value
 
-@ncaab_efficiency.set("radar_table", universal, private, t=Dict[str, RadarEntry])
+@ncaab_efficiency.set("radar_table", universal, t=Dict[str, RadarEntry])
 async def set_radar_table(context, value):
     return value
 
@@ -577,16 +577,16 @@ async def iterate_radar(e):
     
     # Yesterday's statlines by date
     lookahead = timedelta(days=1)
-    yesterday = datetime.now() - lookahead
+    yesterday =  datetime.fromtimestamp(float(e.ts)/1000) - lookahead
     team_statlines = spiodirect.ncaab.get_game_stats_by_date(yesterday)
     for statline in team_statlines:
-        handle_radar_for_statline(radar, statline)
+        handle_radar_for_statline(radar_out, statline)
         
     await set_radar_table(root, radar_out)
     
     print("Ran radar!")
   
-@ncaab_efficiency.get("trend_table", universal, private, t=Dict[str, TrendEntry])
+@ncaab_efficiency.get("trend_table", universal, t=Dict[str, TrendEntry])
 async def get_trend_table(context, value):
     return value
 
@@ -595,7 +595,7 @@ async def set_trend_table(context, value):
     return value
       
 def compare_power_rating(a : EfficiencyEntry)->int:
-    return  .56 * a.oe - .55 * a.de   
+    return  .56 * a.oe - .46 * a.de   
 
 def compare_ap_rank(a : spiodirect.ncaab.team.Teamlike)->int:
     return  a.ApRank or 100
@@ -613,6 +613,13 @@ def get_max_trend(max : int, team_id : int):
         )
     )
 
+def update_trend_for_game(
+    game : spiodirect.ncaab.games_by_date.GameByDatelike,                   
+    power_ratings_order : List[EfficiencyEntry],
+    ap_rank_order : List[spiodirect.ncaab.team.Teamlike]
+):
+    pass
+
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_trend(e):
     
@@ -625,10 +632,33 @@ async def iterate_trend(e):
     teams = spiodirect.ncaab.get_teams()
     max_rank = len(eff_out.values())
     
-    power_ratings_order : List[EfficiencyEntry] = sorted(eff_out.values(), key=compare_power_rating)
+    # Yesterday's games by date
+    lookahead = timedelta(days=1)
+    yesterday = datetime.fromtimestamp(float(e.ts)/1000) - lookahead
+    yesterday_games = spiodirect.ncaab.games_by_date.get_games(yesterday)
+    teams_yesterday  =  set()
+    
+    for game in yesterday_games:
+        
+        teams_yesterday.add(str(game.AwayTeamID))
+        teams_yesterday.add(str(game.HomeTeamID))
+    
+    power_ratings_order : List[EfficiencyEntry] = sorted(eff_out.values(), key=compare_power_rating, reverse=True)
     for i, entry in enumerate(power_ratings_order):
-        last = trend_out.get(entry.team_id) or get_max_trend(max_rank, entry.team_id)
-        trend_out[entry.team_id] = TrendEntry(
+        
+        if str(entry.team_id) not in eff:
+            continue
+        
+        last = trend_out.get(str(entry.team_id)) or get_max_trend(max_rank, entry.team_id) 
+        
+        if (
+            (str(entry.team_id) not in yesterday_games) 
+            and (i == last.gdg_power_rating.current_rank)
+        ):
+            continue
+        
+           
+        trend_out[str(entry.team_id)] = TrendEntry(
             team_id=entry.team_id,
             ap=last.ap,
             gdg_power_rating=TrendDetail(
@@ -640,8 +670,19 @@ async def iterate_trend(e):
             
     ap_rank_order : List[spiodirect.ncaab.team.Teamlike] = sorted(teams, key=compare_ap_rank)
     for i, entry in enumerate(ap_rank_order):
-        last = trend_out.get(entry.TeamID) or get_max_trend(max_rank, entry.TeamID)
-        trend_out[entry.TeamID] = TrendEntry(
+        
+        if str(entry.TeamID) not in eff:
+            continue
+        
+        last = trend_out.get(str(entry.TeamID)) or get_max_trend(max_rank, entry.TeamID)
+        
+        if (
+            (str(entry.TeamID) not in yesterday_games) 
+            and (i == last.ap.current_rank)
+        ):
+            continue
+        
+        trend_out[str(entry.TeamID)] = TrendEntry(
             team_id=entry.TeamID,
             ap=TrendDetail(
                 last_rank=last.ap.current_rank,
@@ -655,5 +696,6 @@ async def iterate_trend(e):
 
 if __name__ == "__main__":
     ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
+    # ncaab_efficiency.model_hostname = "nccab-efficiency"
     ncaab_efficiency.start()
 
