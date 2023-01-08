@@ -162,6 +162,49 @@ async def init_ncaab(e):
     await set_radar_table(root, {})
     await set_trend_table(root, {})
     print("Finished initializing NCAAB EFFICIENCY MODEL")
+    
+class ProjectionRequest(BaseModel):
+    away_team_id : str
+    home_team_id : str
+    neutral : bool
+    
+# TODO: revisit ncaab_efficiency 
+@ncaab_efficiency.method(a=ProjectionRequest, r=ProjectionEntry)
+async def get_mock_projection(a : ProjectionRequest)->ProjectionEntry:
+    
+    # fix league efficiency at start of iteration
+    eff = await get_league_efficiency_table(root)
+
+    tempos = []
+    ppps = []
+    for _, item in eff.items():
+        tempos.append(item.tempo)
+        ppps.append(item.oe)
+        ppps.append(item.de)
+    tempo_avg = sum(tempos)/len(tempos)
+    ppp_avg = sum(ppps)/len(ppps)
+    
+    
+    
+    home_projection, away_projection = get_projection(
+        eff[a.home_team_id].tempo,
+        eff[a.away_team_id].tempo,
+        tempo_avg,
+        eff[a.home_team_id].oe,  # TODO: get from efficiency and home id
+        eff[a.away_team_id].de, # TODO: get from efficiency and away id
+        eff[a.away_team_id].oe, # TODO: get from efficiency and away id
+        eff[a.home_team_id].de, # TODO: get from efficiency and home id
+        ppp_avg, # TODO: computed above
+        a.neutral
+    )
+    
+    return ProjectionEntry(
+        game_id=-1,
+        home_team_id=int(a.home_team_id),
+        away_team_id=int(a.away_team_id),
+        home_team_score=home_projection,
+        away_team_score=away_projection
+    )
 
 @ncaab_efficiency.get("projection_table", universal, t=Dict[str, ProjectionEntry])
 async def get_projection_table(context, value):
