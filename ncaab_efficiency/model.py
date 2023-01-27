@@ -738,7 +738,7 @@ async def iterate_trend(e):
     print("Iterated trend!")
 
 if __name__ == "__main__":
-    ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
+    # ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
     # ncaab_efficiency.model_hostname = "nccab-efficiency"
     ncaab_efficiency.start()
 
