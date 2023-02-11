@@ -10,6 +10,7 @@ from stats import get_possession_from_statline
 import redis
 
 WRITE_BACKUPS : bool = False
+UTL_FLAG=False
 
 def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float , neutral : bool = False):
 
@@ -223,10 +224,6 @@ async def iterate_projection_table(event):
     eff = await get_league_efficiency_table(root)
     pre_eff = await get_preseason_league_efficiency_table(root)
     eff_out = eff.copy()
-    
-    if WRITE_BACKUPS:
-        with open("./debug.json", "w") as f:
-            f.write(json.dumps(list(eff_out.keys())))
    
     ptable = await get_projection_table(root)
     ptable_out = ptable.copy()  # ! use this if you want eff to remain to the same throughout iteration
@@ -283,20 +280,6 @@ async def iterate_projection_table(event):
         out_dict[key] = value.dict()
     await set_projection_table(root, ptable_out)
     
-    if WRITE_BACKUPS:
-        with open('projection_backup.csv', 'w') as projection:
-            writer = csv.writer(projection)
-            count = 0
-            for entry in ptable_out:
-                if count == 0:
-            
-                    # Writing headers of CSV file
-                    header = ptable_out[entry].dict().keys()
-                    writer.writerow(header)
-                    count += 1
-            
-                # Writing data of CSV file
-                writer.writerow(ptable_out[entry].dict().values())
     print("Finished projection iteration!")
 
 @ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
@@ -371,6 +354,10 @@ def update_team_league_efficiency(*,
         de = league_de,
         tempo = league_t
     )
+    
+    global UTL_FLAG
+    if UTL_FLAG:
+        print(eff_entry.dict())    
     eff_table_out[team_id] = eff_entry
 
 def update_team_efficiencies(*, 
@@ -423,6 +410,12 @@ def update_team_efficiencies(*,
         tempo_avg, away_possessions # TODO: possessions vs. home possesions, what's the diff?
     )
     
+    if(game.HomeTeam == "TX" or game.AwayTeam == "TX"):
+        print(game.HomeTeam, game.AwayTeam, game.DateTime, home_game_t, away_game_t)
+        global UTL_FLAG
+        UTL_FLAG=True
+        
+    
     if (
         game.HomeTeamScore is not None and game.AwayTeamScore is not None
         and home_possessions > 0 and away_possessions > 0
@@ -474,13 +467,18 @@ def update_team_efficiencies(*,
         )
         
     else:
+        print(game.HomeTeam, game.AwayTeam, game.HomeTeamScore, game.AwayTeamScore)
         print("Invalid score...")
+        
+    UTL_FLAG = False
     
 
     
 
 @ncaab_efficiency.task(valid=days(1))
 async def iterate_efficiency(e):
+    
+    print("Iterating efficiency")
     
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
@@ -529,39 +527,6 @@ async def iterate_efficiency(e):
     # merge 
     await set_game_efficiency_tables(root, game_effs_out)
     await set_league_efficiency_table(root, eff_out)
-    
-    if WRITE_BACKUPS:
-        with open('efficiency_backup.csv', 'w') as projection:
-            writer = csv.writer(projection)
-            count = 0
-            for entry in eff_out:
-                if count == 0:
-            
-                    # Writing headers of CSV file
-                    header = eff_out[entry].dict().keys()
-                    writer.writerow(header)
-                    count += 1
-            
-                # Writing data of CSV file
-                writer.writerow(eff_out[entry].dict().values())
-           
-    if WRITE_BACKUPS:
-        with open('game_efficiency_backup.csv', 'w') as projection:
-            writer = csv.writer(projection)
-            count = 0
-            for team in game_effs_out:
-                for game_entry in game_effs_out[team]:   
-                    if count == 0:
-                        # Writing headers of CSV file
-                        d = game_effs_out[team][game_entry].dict()
-                        d["team"] = team
-                        header = d.keys()
-                        writer.writerow(header)
-                        count += 1
-                    # Writing data of CSV file
-                    d = game_effs_out[team][game_entry].dict()
-                    d["team"] = team
-                    writer.writerow(d.values())
 
 @ncaab_efficiency.get("radar_table", universal, t=Dict[str, RadarEntry])
 async def get_radar_table(context, value):
@@ -738,7 +703,7 @@ async def iterate_trend(e):
     print("Iterated trend!")
 
 if __name__ == "__main__":
-    # ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
+    ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
     # ncaab_efficiency.model_hostname = "nccab-efficiency"
     ncaab_efficiency.start()
 
