@@ -11,6 +11,7 @@ import redis
 
 WRITE_BACKUPS : bool = False
 UTL_FLAG=False
+UTC_PLUS_PST=1000*60*60*11 # 4 AM PST
 
 def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float , neutral : bool = False):
 
@@ -215,7 +216,7 @@ async def get_projection_table(context, value):
 async def set_projection_table(context, value):
     return value
 
-@ncaab_efficiency.task(valid=days(1))
+@ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_projection_table(event):
     
     print("Iterating projection table...")
@@ -231,7 +232,7 @@ async def iterate_projection_table(event):
     # get games from sportsdataio
     lookahead = timedelta(days=7)
     iter_date = datetime.fromtimestamp(float(event.ts)/1000)
-    print("Iterating on...", iter_date)
+    print("Iterating on...", float(event.ts), iter_date)
     end_date = iter_date + lookahead
 
     tempos = []
@@ -475,7 +476,7 @@ def update_team_efficiencies(*,
 
     
 
-@ncaab_efficiency.task(valid=days(1))
+@ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_efficiency(e):
     
     print("Iterating efficiency")
@@ -574,7 +575,7 @@ def get_zero_radar(team_id : int):
         defense=RadarDetail()
     )
 
-@ncaab_efficiency.task(valid=days(1))
+@ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_radar(e):
     
     print("Running radar...", datetime.fromtimestamp(float(e.ts)/1000))
@@ -628,7 +629,7 @@ def update_trend_for_game(
 ):
     pass
 
-@ncaab_efficiency.task(valid=days(1))
+@ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_trend(e):
     
     print("Iterating trend...")
@@ -705,5 +706,6 @@ async def iterate_trend(e):
 if __name__ == "__main__":
     ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
     # ncaab_efficiency.model_hostname = "nccab-efficiency"
+    ncaab_efficiency.cron_window = 60 * 60
     ncaab_efficiency.start()
 

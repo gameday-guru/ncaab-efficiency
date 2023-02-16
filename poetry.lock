@@ -188,7 +188,7 @@ test = ["pytest (>=6.2.4,<7.0.0)", "pytest-cov (>=2.12.0,<4.0.0)", "mypy (==0.91
 
 [[package]]
 name = "gdg-model-builder"
-version = "1.4.14"
+version = "1.4.16"
 description = ""
 category = "main"
 optional = false
@@ -200,6 +200,7 @@ cattrs = ">=22.1.0,<23.0.0"
 checksumdir = ">=1.2.0,<2.0.0"
 fastapi = {version = ">=0.78.0,<0.79.0", extras = ["all"]}
 numpy = ">=1.23.0,<2.0.0"
+polars = ">=0.16.2,<0.17.0"
 pycron = ">=3.0.0,<4.0.0"
 redis = ">=4.3.4,<5.0.0"
 
@@ -286,6 +287,29 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 pyparsing = ">=2.0.2,<3.0.5 || >3.0.5"
+
+[[package]]
+name = "polars"
+version = "0.16.4"
+description = "Blazingly fast DataFrame library"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+typing_extensions = {version = ">=4.0.1", markers = "python_version < \"3.11\""}
+
+[package.extras]
+fsspec = ["fsspec"]
+connectorx = ["connectorx"]
+pyarrow = ["pyarrow (>=4.0.0)"]
+pandas = ["pyarrow (>=4.0.0)", "pandas"]
+timezone = ["backports.zoneinfo", "tzdata"]
+matplotlib = ["matplotlib"]
+all = ["polars"]
+deltalake = ["deltalake (>=0.6.2)"]
+numpy = ["numpy (>=1.16.0)"]
+xlsx2csv = ["xlsx2csv (>=0.8.0)"]
 
 [[package]]
 name = "pycron"
@@ -540,6 +564,7 @@ markupsafe = []
 numpy = []
 orjson = []
 packaging = []
+polars = []
 pycron = []
 pydantic = []
 pyparsing = []
