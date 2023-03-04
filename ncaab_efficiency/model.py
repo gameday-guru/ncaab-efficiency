@@ -218,8 +218,6 @@ async def set_projection_table(context, value):
 
 @ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_projection_table(event):
-    
-    print("Iterating projection table...")
 
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
@@ -239,7 +237,6 @@ async def iterate_projection_table(event):
     for _, item in eff_out.items():
         tempos.append(item.tempo)
     tempo_avg = sum(tempos)/len(tempos)
-    print(tempo_avg)
 
     ppps = []
     for _, item in eff_out.items():
@@ -251,6 +248,11 @@ async def iterate_projection_table(event):
         iter_date += timedelta(days=1)
         games = spiodirect.ncaab.games_by_date.get_games(iter_date)
         for game in games:
+            
+            """
+            if game.NeutralVenue:
+                print("Handling neutral game...", game.HomeTeam, game.AwayTeam, game.NeutralVenue)
+            """
             
             # TODO:START I believe these are the same
             if (str(game.HomeTeamID) not in pre_eff) or (str(game.AwayTeamID) not in pre_eff):
@@ -265,8 +267,20 @@ async def iterate_projection_table(event):
             if str(game.AwayTeamID) not in eff_out:
                 eff_out[str(game.AwayTeamID)] = get_median_efficiency_entry(game.AwayTeamID)
         
-            home_team_score, away_team_score = get_projection(eff_out[str(game.HomeTeamID)].tempo, eff_out[str(game.AwayTeamID)].tempo, tempo_avg, eff_out[str(game.HomeTeamID)].oe, eff_out[str(game.AwayTeamID)].de,
-            eff_out[str(game.AwayTeamID)].oe, eff_out[str(game.HomeTeamID)].de, ppp_avg, game.NeutralVenue)
+            home_team_score, away_team_score = get_projection(
+                eff_out[str(game.HomeTeamID)].tempo, 
+                eff_out[str(game.AwayTeamID)].tempo, 
+                tempo_avg, 
+                eff_out[str(game.HomeTeamID)].oe, 
+                eff_out[str(game.AwayTeamID)].de,
+                eff_out[str(game.AwayTeamID)].oe, 
+                eff_out[str(game.HomeTeamID)].de, 
+                ppp_avg, 
+                game.NeutralVenue
+            )
+            
+            if game.HomeTeam == "PORT" or game.AwayTeam == "PORT":
+                print("PORT: ", game.GameID, home_team_score, away_team_score)
             
             # ? ptable_out[game_id] = ...
             ptable_out[game.GameID] = ProjectionEntry(
@@ -276,12 +290,11 @@ async def iterate_projection_table(event):
                 home_team_score = home_team_score,
                 away_team_score = away_team_score
             )
+            
     out_dict = dict()
     for key, value in ptable_out.items():
         out_dict[key] = value.dict()
     await set_projection_table(root, ptable_out)
-    
-    print("Finished projection iteration!")
 
 @ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
 async def get_league_efficiency_table(context, value):
@@ -355,10 +368,7 @@ def update_team_league_efficiency(*,
         de = league_de,
         tempo = league_t
     )
-    
-    global UTL_FLAG
-    if UTL_FLAG:
-        print(eff_entry.dict())    
+
     eff_table_out[team_id] = eff_entry
 
 def update_team_efficiencies(*, 
@@ -410,11 +420,6 @@ def update_team_efficiencies(*,
         eff_table[home_team_id].tempo, 
         tempo_avg, away_possessions # TODO: possessions vs. home possesions, what's the diff?
     )
-    
-    if(game.HomeTeam == "TX" or game.AwayTeam == "TX"):
-        print(game.HomeTeam, game.AwayTeam, game.DateTime, home_game_t, away_game_t)
-        global UTL_FLAG
-        UTL_FLAG=True
         
     
     if (
@@ -466,20 +471,12 @@ def update_team_efficiencies(*,
             tempo_avg=tempo_avg,
             ppp_avg=ppp_avg
         )
-        
-    else:
-        print(game.HomeTeam, game.AwayTeam, game.HomeTeamScore, game.AwayTeamScore)
-        print("Invalid score...")
-        
-    UTL_FLAG = False
     
 
     
 
 @ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_efficiency(e):
-    
-    print("Iterating efficiency")
     
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
@@ -578,8 +575,6 @@ def get_zero_radar(team_id : int):
 @ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_radar(e):
     
-    print("Running radar...", datetime.fromtimestamp(float(e.ts)/1000))
-    
     # get state
     radar = await get_radar_table(root)
     radar_out = radar.copy()
@@ -592,8 +587,6 @@ async def iterate_radar(e):
         handle_radar_for_statline(radar_out, statline)
         
     await set_radar_table(root, radar_out)
-    
-    print("Ran radar!")
   
 @ncaab_efficiency.get("trend_table", universal, t=Dict[str, TrendEntry])
 async def get_trend_table(context, value):
@@ -631,8 +624,7 @@ def update_trend_for_game(
 
 @ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_trend(e):
-    
-    print("Iterating trend...")
+
     # get state
     eff = await get_league_efficiency_table(root)
     eff_out = eff.copy()
@@ -701,7 +693,6 @@ async def iterate_trend(e):
         )
     
     await set_trend_table(root, trend_out)
-    print("Iterated trend!")
 
 if __name__ == "__main__":
     ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
