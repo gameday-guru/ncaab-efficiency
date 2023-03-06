@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from gdg_model_builder import Model, \
     private, session, spiodirect, universal, \
-    poll, days, secs, dow, Event, root, Init
+    poll, days, secs, dow, hours, Event, root, Init
 from pydantic import BaseModel
 import csv
 import json
@@ -24,8 +24,6 @@ def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_
     home_projection = (proj_tempo*((1.014 * 1.12 * home_oe) + (1.014 * .88 * away_de) - ppp_avg))/100
     away_projection = (proj_tempo*((0.986  * 1.12 * away_oe) + (0.986 * .88 * home_de) - ppp_avg))/100
     return (home_projection, away_projection)
-
-GAME_LOG_OUT = False
 
 def get_game_t(tempo: float, oppontent_tempo: float, tempo_avg: float, possessions: float):
     
@@ -55,7 +53,6 @@ def get_weight_t(n_games: int):
 def get_new_e(preseason_oe: float, preseason_de: float, avg_game_oe: float, avg_game_de: float, weight: float):
     oe = ((1-weight)*preseason_oe + weight*(avg_game_oe))
     de = ((1-weight)*preseason_de + weight*(avg_game_de)) 
-    # print("Preseason coefficient: ",  1-weight, oe, de, preseason_de, preseason_oe, avg_game_de, avg_game_oe)
     return (oe, de)
 
 def get_new_tempo(preseason_t: float, avg_game_t: float, weight: float):
@@ -216,7 +213,7 @@ async def get_projection_table(context, value):
 async def set_projection_table(context, value):
     return value
 
-@ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
+@ncaab_efficiency.task(valid=hours(3))
 async def iterate_projection_table(event):
 
     # fix league efficiency at start of iteration
@@ -278,9 +275,6 @@ async def iterate_projection_table(event):
                 ppp_avg, 
                 game.NeutralVenue
             )
-            
-            if game.HomeTeam == "PORT" or game.AwayTeam == "PORT":
-                print("PORT: ", game.GameID, home_team_score, away_team_score)
             
             # ? ptable_out[game_id] = ...
             ptable_out[game.GameID] = ProjectionEntry(
@@ -697,6 +691,6 @@ async def iterate_trend(e):
 if __name__ == "__main__":
     ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
     # ncaab_efficiency.model_hostname = "nccab-efficiency"
-    # ncaab_efficiency.cron_window = 60 * 60
+    ncaab_efficiency.retro_window = (3 * 60 * 60)
     ncaab_efficiency.start()
 
