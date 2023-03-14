@@ -460,11 +460,15 @@ class BracketRequest(BaseModel):
     id : int
     
 # TODO: revisit ncaab_efficiency 
+
 @lru_cache(4)
+async def get_main_bracket():
+    return await to_rows(await e2e_bracket_by_round(full_example))
+
 @ncaab_efficiency.method(a=BracketRequest, r=TeamsByRoundBracket)
 async def get_bracket_by_round(a : Bracket)->TeamsByRoundBracket:
     
-   return await to_rows(await e2e_bracket_by_round(full_example))
+   return await get_main_bracket()
 
 @ncaab_efficiency.get("projection_table", universal, t=Dict[str, ProjectionEntry])
 async def get_projection_table(context, value):
