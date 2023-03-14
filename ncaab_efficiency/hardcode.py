@@ -1,73 +1,17 @@
 west_example = [
-    [["276","141"],None,None,None],
-    [None,None,None,None],
-    [["105","247"],None,None,None],
-    [None,None,None,None],
-    [["279","212"],None,None,None],
-    [None,None,None,None],
-    [["254","108"],None,None,None],
-    [None,None,None,None],
-    [["93","58"],None,None,None],
-    [None,None,None,None],
-    [["271","65"],None,None,None],
-    [None,None,None,None],
-    [["23","101"],None,None,None],
-    [None,None,None,None],
-    [["31","28"],None,None,None]
+    [[["106","195"],None,None,None],[None,None,None,None],[["276","102"],None,None,None],[None,None,None,None],[["335","45"],None,None,None],[None,None,None,None],[["3","167"],None,None,None],[None,None,None,None],[["114","216"],None,None,None],[None,[None,None],None,None],[["334","345"],None,None,None],[None,None,None,None],[["100","215"],None,None,None],[None,None,None,None],[["253","80"],None,None,None]]
 ]
 
 east_example = [
-    [["6","92"],None,None,None],
-    [None,None,None,None],
-    [["33","103"],None,None,None],
-    [None,None,None,None],
-    [["34","277"],None,None,None],
-    [None,None,None,None],
-    [["335","27"],None,None,None],
-    [None,None,None,None],
-    [["113","278"],None,None,None],
-    [None,None,None,None],
-    [["253","107"],None,None,None],
-    [None,None,None,None],
-    [["280","134"],None,None,None],
-    [None,None,None,None],
-    [["109","61"],None,None,None]
+    [[["94","304"],None,None,None],[None,[None,None],None,None],[["7","145"],None,None,None],[None,None,None,None],[["26","320"],None,None,None],[None,None,None,None],[["277","266"],None,None,None],[None,None,None,None],[["268","63"],None,None,None],[None,None,None,None],[["112","74"],None,None,None],[None,None,None,None],[["97","246"],None,None,None],[None,None,None,None],[["65","15"],None,None,None]]
 ]
 
 south_example = [
-    [["246","273"],None,None,None],
-    [None,None,None,None],
-    [["59","110"],None,None,None],
-    [None,None,None,None],
-    [["245","8"],None,None,None],
-    [None,None,None,None],
-    [["3","114"],None,None,None],
-    [None,None,None,None],
-    [["21","100"],None,None,None],
-    [None,None,None,None],
-    [["250","334"],None,None,None],
-    [None,None,None,None],
-    [["112","98"],None,None,None],
-    [None,None,None,None],
-    [["215","111"],None,None,None]
+    [[["275","292"],None,None,None],[None,None,None,None],[["92","107"],None,None,None],[None,None,None,None],[["212","129"],None,None,None],[None,None,None,None],[["22","283"],None,None,None],[None,None,None,None],[["61","33"],None,None,None],[None,None,None,None],[["108","119"],None,None,None],[None,None,None,None],[["280","220"],None,None,None],[None,None,None,None],[["247","160"],None,None,None]]
 ]
 
 midwest_example = [
-    [["268","63"],None,None,None],
-    [None,None,None,None],
-    [["95","44"],None,None,None],
-    [None,None,None,None],
-    [["275","270"],None,None,None],
-    [None,None,None,None],
-    [["97","220"],None,None,None],
-    [None,None,None,None],
-    [["158","94"],None,None,None],
-    [None,None,None,None],
-    [["145","102"],None,None,None],
-    [None,None,None,None],
-    [["4","106"],None,None,None],
-    [None,None,None,None],
-    [["22","7"],None,None,None]
+    [[["6","154"],None,None,None],[None,[None,None],None,None],[["91","279"],None,None,None],[None,None,[None,None],None],[["23","211"],None,None,None],[None,None,None,None],[["93","178"],None,None,None],[None,None,None,None],[["110","28"],None,None,None],[None,None,None,None],[["59","42"],None,None,None],[None,None,None,None],[["270","101"],None,None,None],[None,None,None,None],[["109","261"],None,None,None]],
 ]
 
 full_example = [
