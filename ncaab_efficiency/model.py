@@ -477,6 +477,8 @@ def update_team_efficiencies(*,
 
 @ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_efficiency(e):
+    iter_date = datetime.fromtimestamp(float(e.ts)/1000)
+    print("Efficiency on...", float(e.ts), iter_date)
     
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
