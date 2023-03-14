@@ -11,6 +11,7 @@ import redis
 from typing import Tuple, Sequence, Dict, List
 import math
 from ncaab_efficiency.hardcode import full_example
+from functools import lru_cache
 
 Bracket = List[List[Tuple[Optional[str], Optional[str]]]]
 WinPctBracket = List[List[
@@ -459,6 +460,7 @@ class BracketRequest(BaseModel):
     id : int
     
 # TODO: revisit ncaab_efficiency 
+@lru_cache(4)
 @ncaab_efficiency.method(a=BracketRequest, r=TeamsByRoundBracket)
 async def get_bracket_by_round(a : Bracket)->TeamsByRoundBracket:
     
