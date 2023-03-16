@@ -1,7 +1,7 @@
 import unittest
 from typing import TypeVar, Callable, Coroutine, Any
 import asyncio
-from .bracket import e2e_bracket_by_round
+from .bracket import e2e_bracket_by_round, to_rows
 from .hardcode import full_example
 
 AsyncCallable = Callable[..., Coroutine[Any, Any, Any]]
@@ -109,5 +109,5 @@ class BracketTest(unittest.TestCase):
     async def test_gets_by_round(self):
     
         res = await e2e_bracket_by_round(full_example)
-        print(res)
+        print(await to_rows(res))
     

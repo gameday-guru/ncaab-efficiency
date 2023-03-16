@@ -222,7 +222,7 @@ async def get_teams_by_round(
 async def form_win_pct_bracket(bracket : Bracket)->WinPctBracket:
     
     # cols = len(bracket[0])
-    rows = len(bracket)
+    rows = len(bracket) + 1
     cols = math.floor(math.log2(rows)) + 1
     
     win_pct_bracket : WinPctBracket = [[] for row in range(rows)]
@@ -461,14 +461,24 @@ class BracketRequest(BaseModel):
     
 # TODO: revisit ncaab_efficiency 
 
-@lru_cache(4)
+TIME = datetime.utcfromtimestamp(0)
+BRACKET = None
 async def get_main_bracket():
     return await to_rows(await e2e_bracket_by_round(full_example))
 
 @ncaab_efficiency.method(a=BracketRequest, r=TeamsByRoundBracket)
 async def get_bracket_by_round(a : Bracket)->TeamsByRoundBracket:
     
-   return await get_main_bracket()
+    global BRACKET
+    global TIME
+
+    now = datetime.now()
+    if now - TIME > timedelta(hours=1) and BRACKET is not None:
+        return BRACKET
+    
+    BRACKET = await get_main_bracket()
+    TIME = now
+    return BRACKET
 
 @ncaab_efficiency.get("projection_table", universal, t=Dict[str, ProjectionEntry])
 async def get_projection_table(context, value):

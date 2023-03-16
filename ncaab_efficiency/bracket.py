@@ -163,6 +163,7 @@ async def expand_games(bracket : WinPctBracket)->WinPctBracket:
             next_col_no = col_no + 1
             next_row_no = row_no + get_offset(row_no=row_no, col_no=col_no)
             top_or_bottom = should_leader_be_up(row_no=row_no, col_no=col_no)
+    
             if next_col_no > cols - 1:
                 continue
         
@@ -211,7 +212,7 @@ async def get_teams_by_round(
 async def form_win_pct_bracket(bracket : Bracket)->WinPctBracket:
     
     # cols = len(bracket[0])
-    rows = len(bracket)
+    rows = len(bracket) + 1
     cols = math.floor(math.log2(rows)) + 1
     
     win_pct_bracket : WinPctBracket = [[] for row in range(rows)]
@@ -235,3 +236,13 @@ async def e2e_bracket_by_round(bracket : Bracket)->TeamsByRoundBracket:
     win_pct = await form_win_pct_bracket(bracket)
     win_pct = await expand_games(win_pct)
     return await get_teams_by_round(win_pct)
+
+async def to_rows(bracket : TeamsByRoundBracket)->List[Dict]:
+    
+    rows = []
+    for team_id in bracket:
+        d = bracket[team_id]
+        d["id"] = team_id
+        rows.append(d)
+       
+    return rows
