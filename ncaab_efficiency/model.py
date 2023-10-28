@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from gdg_model_builder import Model, \
     private, session, spiodirect, universal, \
-    poll, days, secs, dow, Event, root, Init
+    poll, days, secs, dow, hours, Event, root, Init
 from pydantic import BaseModel
 import csv
 import json
@@ -261,6 +261,9 @@ WRITE_BACKUPS : bool = False
 UTL_FLAG=False
 UTC_PLUS_PST=1000*60*60*11 # 4 AM PST
 
+def pythag_win(home : float, away : float)->float:
+    return 0.0
+
 def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_oe: float, away_de: float, away_oe: float, home_de: float, ppp_avg: float , neutral : bool = False):
 
     proj_tempo = home_tempo + away_tempo - tempo_avg
@@ -272,8 +275,6 @@ def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_
     home_projection = (proj_tempo*((1.014 * 1.12 * home_oe) + (1.014 * .88 * away_de) - ppp_avg))/100
     away_projection = (proj_tempo*((0.986  * 1.12 * away_oe) + (0.986 * .88 * home_de) - ppp_avg))/100
     return (home_projection, away_projection)
-
-GAME_LOG_OUT = False
 
 def get_game_t(tempo: float, oppontent_tempo: float, tempo_avg: float, possessions: float):
     
@@ -303,7 +304,6 @@ def get_weight_t(n_games: int):
 def get_new_e(preseason_oe: float, preseason_de: float, avg_game_oe: float, avg_game_de: float, weight: float):
     oe = ((1-weight)*preseason_oe + weight*(avg_game_oe))
     de = ((1-weight)*preseason_de + weight*(avg_game_de)) 
-    # print("Preseason coefficient: ",  1-weight, oe, de, preseason_de, preseason_oe, avg_game_de, avg_game_oe)
     return (oe, de)
 
 def get_new_tempo(preseason_t: float, avg_game_t: float, weight: float):
@@ -401,7 +401,7 @@ def get_seed_league_efficiency()->Dict[str, EfficiencyEntry]:
             )
     return seed_table
 
-@ncaab_efficiency.task(e = Init)
+@ncaab_efficiency.task(Event = Init)
 async def init_ncaab(e):
     # trigger again again
     preseason_data = get_seed_league_efficiency()
@@ -480,15 +480,15 @@ async def get_bracket_by_round(a : Bracket)->TeamsByRoundBracket:
     TIME = now
     return BRACKET
 
-@ncaab_efficiency.get("projection_table", universal, t=Dict[str, ProjectionEntry])
+@ncaab_efficiency.get("projection_table", universal, Struct=Dict[str, ProjectionEntry])
 async def get_projection_table(context, value):
     return value
 
-@ncaab_efficiency.set("projection_table", universal, private, t=Dict[str, ProjectionEntry])
+@ncaab_efficiency.set("projection_table", universal, private, Struct=Dict[str, ProjectionEntry])
 async def set_projection_table(context, value):
     return value
 
-@ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
+@ncaab_efficiency.task(valid=hours(2))
 async def iterate_projection_table(event):
 
     # fix league efficiency at start of iteration
@@ -551,9 +551,6 @@ async def iterate_projection_table(event):
                 game.NeutralVenue
             )
             
-            if game.HomeTeam == "PORT" or game.AwayTeam == "PORT":
-                print("PORT: ", game.GameID, home_team_score, away_team_score)
-            
             # ? ptable_out[game_id] = ...
             ptable_out[game.GameID] = ProjectionEntry(
                 game_id = game.GameID,
@@ -568,35 +565,35 @@ async def iterate_projection_table(event):
         out_dict[key] = value.dict()
     await set_projection_table(root, ptable_out)
 
-@ncaab_efficiency.get("league_effiency_table", universal, t=Dict[str, EfficiencyEntry])
+@ncaab_efficiency.get("league_effiency_table", universal, Struct=Dict[str, EfficiencyEntry])
 async def get_league_efficiency_table(context, value):
     return value
 
-@ncaab_efficiency.set("league_effiency_table", universal, private, t=Dict[str, EfficiencyEntry])
+@ncaab_efficiency.set("league_effiency_table", universal, private, Struct=Dict[str, EfficiencyEntry])
 async def set_league_efficiency_table(context, value):
     return value
 
-@ncaab_efficiency.get("preseason_league_efficiency_table", universal, t=Dict[str, EfficiencyEntry])
+@ncaab_efficiency.get("preseason_league_efficiency_table", universal, Struct=Dict[str, EfficiencyEntry])
 async def get_preseason_league_efficiency_table(context, value):
     return value
 
-@ncaab_efficiency.set("preseason_league_efficiency_table", universal, private, t=Dict[str, EfficiencyEntry])
+@ncaab_efficiency.set("preseason_league_efficiency_table", universal, private, Struct=Dict[str, EfficiencyEntry])
 async def set_preseason_league_efficiency_table(context,value):
     return value
 
-@ncaab_efficiency.get("manual_league_efficiency_table", universal, t=Dict[str, EfficiencyEntry])
+@ncaab_efficiency.get("manual_league_efficiency_table", universal, Struct=Dict[str, EfficiencyEntry])
 async def get_manual_league_efficiency_table(context, value):
     return value
 
-@ncaab_efficiency.set("manual_league_efficiency_table", universal, t=Dict[str, EfficiencyEntry])
+@ncaab_efficiency.set("manual_league_efficiency_table", universal, Struct=Dict[str, EfficiencyEntry])
 async def set_manual_league_efficiency_table(context, value):
     return value
 
-@ncaab_efficiency.get("game_efficiency_tables", universal, private, t=Dict[str, Dict[str, GameEfficiencyEntry]])
+@ncaab_efficiency.get("game_efficiency_tables", universal, private, Struct=Dict[str, Dict[str, GameEfficiencyEntry]])
 async def get_game_efficiency_tables(context, value):
     return value
 
-@ncaab_efficiency.set("game_efficiency_tables", universal, private, t=Dict[str, Dict[str, GameEfficiencyEntry]])
+@ncaab_efficiency.set("game_efficiency_tables", universal, private, Struct=Dict[str, Dict[str, GameEfficiencyEntry]])
 async def set_game_efficiency_tables(context, value):
     return value
 
@@ -701,20 +698,21 @@ def update_team_efficiencies(*,
         
         home_factor = 1.0 if game.NeutralVenue else 1.014
         away_factor = 1.0 if game.NeutralVenue else 0.986
+        ot_factor = 1.0 if len(game.Periods) == 2 else 40/(((len(game.Periods) - 2) * 5) + 40)
         
         game_eff_table_out[home_team_id][game_id] = GameEfficiencyEntry(
             team_id = home_team_id,
             game_id = game.GameID,
-            game_oe = 100 * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[away_team_id].de)/ppp_avg)),
-            game_de = 100 * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[away_team_id].oe)/ppp_avg)),
+            game_oe = ot_factor * 100 * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[away_team_id].de)/ppp_avg)),
+            game_de = ot_factor * 100 * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[away_team_id].oe)/ppp_avg)),
             tempo = home_game_t
         )
         
         game_eff_table_out[away_team_id][game_id] = GameEfficiencyEntry(
             team_id = away_team_id,
             game_id = game.GameID,
-            game_oe = 100 * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[home_team_id].de)/ppp_avg)),
-            game_de = 100 * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[home_team_id].oe)/ppp_avg)),
+            game_oe = ot_factor * 100 * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[home_team_id].de)/ppp_avg)),
+            game_de = ot_factor * 100 * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[home_team_id].oe)/ppp_avg)),
             tempo = away_game_t
         )
         
@@ -752,6 +750,8 @@ async def iterate_efficiency(e):
     iter_date = datetime.fromtimestamp(float(e.ts)/1000)
     print("Efficiency on...", float(e.ts), iter_date)
     
+    iter_date = datetime.fromtimestamp(float(e.ts)/1000)
+    print("Iterating efficiency", float(e.ts), iter_date)
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
     eff_out = eff.copy()
@@ -800,11 +800,11 @@ async def iterate_efficiency(e):
     await set_game_efficiency_tables(root, game_effs_out)
     await set_league_efficiency_table(root, eff_out)
 
-@ncaab_efficiency.get("radar_table", universal, t=Dict[str, RadarEntry])
+@ncaab_efficiency.get("radar_table", universal, Struct=Dict[str, RadarEntry])
 async def get_radar_table(context, value):
     return value
 
-@ncaab_efficiency.set("radar_table", universal, t=Dict[str, RadarEntry])
+@ncaab_efficiency.set("radar_table", universal, Struct=Dict[str, RadarEntry])
 async def set_radar_table(context, value):
     return value
 
@@ -862,11 +862,11 @@ async def iterate_radar(e):
         
     await set_radar_table(root, radar_out)
   
-@ncaab_efficiency.get("trend_table", universal, t=Dict[str, TrendEntry])
+@ncaab_efficiency.get("trend_table", universal, Struct=Dict[str, TrendEntry])
 async def get_trend_table(context, value):
     return value
 
-@ncaab_efficiency.set("trend_table", universal, private, t=Dict[str, TrendEntry])
+@ncaab_efficiency.set("trend_table", universal, private, Struct=Dict[str, TrendEntry])
 async def set_trend_table(context, value):
     return value
       
@@ -969,8 +969,8 @@ async def iterate_trend(e):
     await set_trend_table(root, trend_out)
 
 if __name__ == "__main__":
-    ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
+    ncaab_efficiency.retrodate = datetime.strptime("2023 3 9", "%Y %m %d").timestamp()
     # ncaab_efficiency.model_hostname = "nccab-efficiency"
-    # ncaab_efficiency.cron_window = 60 * 60
+    ncaab_efficiency.retro_window = (2 * 60 * 60)
     ncaab_efficiency.start()
 
