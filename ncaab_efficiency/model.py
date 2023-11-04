@@ -20,8 +20,8 @@ def get_projection(home_tempo: float, away_tempo: float, tempo_avg: float, home_
 
     proj_tempo = home_tempo + away_tempo - tempo_avg
     if neutral:
-        home_projection = (proj_tempo*((1.12 * home_oe) + (.88 * away_de) - ppp_avg))/100
-        away_projection = (proj_tempo*((1.12 * away_oe) + (.88 * home_de) - ppp_avg))/100
+        home_projection = (proj_tempo*((1.12 * 0.986 * home_oe) + (.88 * away_de) - ppp_avg))/100
+        away_projection = (proj_tempo*((1.12 * 0.986 * away_oe) + (.88 * home_de) - ppp_avg))/100
         return (home_projection, away_projection)
         
     home_projection = (proj_tempo*((1.014 * 1.12 * home_oe) + (1.014 * .88 * away_de) - ppp_avg))/100
@@ -426,21 +426,23 @@ def update_team_efficiencies(*,
         
         home_factor = 1.0 if game.NeutralVenue else 1.014
         away_factor = 1.0 if game.NeutralVenue else 0.986
+        op_off_factor = 0.986 if game.NeutralVenue else 1.0
+        op_def_factor = 1.014 if game.NeutralVenue else 1.0
         ot_factor = 1.0 if len(game.Periods) == 2 else 40/(((len(game.Periods) - 2) * 5) + 40)
         
         game_eff_table_out[home_team_id][game_id] = GameEfficiencyEntry(
             team_id = home_team_id,
             game_id = game.GameID,
-            game_oe = ot_factor * 100 * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[away_team_id].de)/ppp_avg)),
-            game_de = ot_factor * 100 * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[away_team_id].oe)/ppp_avg)),
+            game_oe = ot_factor * op_off_factor * 100 * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[away_team_id].de)/ppp_avg)),
+            game_de = ot_factor * op_def_factor * 100 * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[away_team_id].oe)/ppp_avg)),
             tempo = home_game_t
         )
         
         game_eff_table_out[away_team_id][game_id] = GameEfficiencyEntry(
             team_id = away_team_id,
             game_id = game.GameID,
-            game_oe = ot_factor * 100 * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[home_team_id].de)/ppp_avg)),
-            game_de = ot_factor * 100 * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[home_team_id].oe)/ppp_avg)),
+            game_oe = ot_factor * 100 * op_off_factor * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[home_team_id].de)/ppp_avg)),
+            game_de = ot_factor * 100 * op_def_factor * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[home_team_id].oe)/ppp_avg)),
             tempo = away_game_t
         )
         
