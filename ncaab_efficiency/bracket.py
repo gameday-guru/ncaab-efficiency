@@ -1,7 +1,8 @@
 from typing import Tuple, Sequence, Dict, List
-from .model import get_mock_projection, pythag_win, ProjectionRequest
+from .model import get_mock_projection, ProjectionRequest, Optional
+import math
 
-Bracket = Sequence[Sequence[Tuple[str, str]]]
+Bracket = Sequence[Sequence[Tuple[Optional[str], Optional[str]]]]
 WinPctBracket = Sequence[Sequence[
     Tuple[
         Dict[str, float],
@@ -96,26 +97,48 @@ async def expand_next_round(
     
     for top_team_id in top:
         for bottom_team_id in bottom:
+            
+            projection_entry = await get_mock_projection(ProjectionRequest(
+                home_team_id=top_team_id,
+                away_team_id=bottom_team_id,
+                neutral=True
+            ))
+            
+            top_score = projection_entry.home_team_score
+            bottom_score = projection_entry.away_team_score
         
             top_pct, bottom_pct = pythag_win(
-                *(await get_mock_projection(ProjectionRequest(
-                    home_team_id=top_team_id,
-                    away_team_id=bottom_team_id,
-                    neutral=True
-                )))
+                top_score,
+                bottom_score
             )
             
+            if top_team_id not in next_round_ver:
+                next_round_ver[top_team_id] = [
+                    [],
+                    []
+                ]
             next_round_ver[top_team_id][0].append(top_pct)
             next_round_ver[top_team_id][1].append(bottom[bottom_team_id])
             
-            next_round_ver[top_team_id][0].append(bottom_pct)
-            next_round_ver[top_team_id][1].append(top[top_team_id])
+            if bottom_team_id not in next_round_ver:
+                next_round_ver[bottom_team_id] = [
+                    [],
+                    []
+                ]
+            next_round_ver[bottom_team_id][0].append(bottom_pct)
+            next_round_ver[bottom_team_id][1].append(top[top_team_id])
             
     next_round : Dict[str, float] = {}        
     
     for team_id in next_round_ver:
         
-        next_round[team_id] = weighted_avg(
+        pct = .5
+        if team_id in top:
+            pct = top[team_id]
+        elif team_id in bottom:
+            pct = bottom[team_id]
+        
+        next_round[team_id] = pct * weighted_avg(
             entries=next_round_ver[team_id][0],
             weights=next_round_ver[team_id][1]
         )  
@@ -130,14 +153,26 @@ async def expand_games(bracket : WinPctBracket)->WinPctBracket:
     for col_no in range(cols):
         for row_no in range(rows):
             
+            if bracket[row_no][col_no] is None:
+                continue
+            
+            top, bottom = bracket[row_no][col_no]
             next_round = await expand_next_round(
-                bracket[row_no][col_no]
+                top, bottom
             )
             next_col_no = col_no + 1
-            next_row_no = get_offset(row_no=row_no, col_no=col_no)
+            next_row_no = row_no + get_offset(row_no=row_no, col_no=col_no)
             top_or_bottom = should_leader_be_up(row_no=row_no, col_no=col_no)
-            
-            bracket[next_col_no][next_row_no][top_or_bottom] = next_round
+    
+            if next_col_no > cols - 1:
+                continue
+        
+            if bracket[next_row_no][next_col_no] is None:
+                bracket[next_row_no][next_col_no] = [
+                    {},
+                    {}
+                ]
+            bracket[next_row_no][next_col_no][top_or_bottom] = next_round
             
     return bracket
 
@@ -153,13 +188,22 @@ async def get_teams_by_round(
     for col_no in range(cols):
         for row_no in range(rows):
             
+            if bracket[row_no][col_no] is None:
+                continue
+            
             top_teams, bottom_teams = bracket[row_no][col_no]
             
             for top_team_id in top_teams:
                 
+                if top_team_id not in by_round:
+                    by_round[top_team_id] = {}
+                
                 by_round[top_team_id][col_no] = top_teams[top_team_id]
 
             for bottom_team_id in bottom_teams:
+                
+                if bottom_team_id not in by_round:
+                    by_round[bottom_team_id] = {}
                 
                 by_round[bottom_team_id][col_no] = bottom_teams[bottom_team_id]
                 
@@ -167,20 +211,23 @@ async def get_teams_by_round(
 
 async def form_win_pct_bracket(bracket : Bracket)->WinPctBracket:
     
-    cols = len(bracket[0])
-    rows = len(bracket)
+    # cols = len(bracket[0])
+    rows = len(bracket) + 1
+    cols = math.floor(math.log2(rows)) + 1
     
     win_pct_bracket : WinPctBracket = [[] for row in range(rows)]
     
-    for row in range(0, rows, 2):
-        win_pct_bracket[row] = [
-            {
-                bracket[row][0][0] : 1.0
-            },
-            {
-                bracket[row][0][1] : 1.0
-            }
-        ]
+    for row in range(0, rows):
+        win_pct_bracket[row] = [None for col in range(cols)]
+        if row % 2 == 0:
+            win_pct_bracket[row][0] = [
+                {
+                    bracket[row][0][0] : 1.0
+                },
+                {
+                    bracket[row][0][1] : 1.0
+                }
+            ]
         
     return win_pct_bracket
 
@@ -190,5 +237,12 @@ async def e2e_bracket_by_round(bracket : Bracket)->TeamsByRoundBracket:
     win_pct = await expand_games(win_pct)
     return await get_teams_by_round(win_pct)
 
+async def to_rows(bracket : TeamsByRoundBracket)->List[Dict]:
     
-            
+    rows = []
+    for team_id in bracket:
+        d = bracket[team_id]
+        d["id"] = team_id
+        rows.append(d)
+       
+    return rows
