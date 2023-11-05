@@ -969,7 +969,7 @@ async def iterate_trend(e):
     await set_trend_table(root, trend_out)
 
 if __name__ == "__main__":
-    ncaab_efficiency.retrodate = datetime.strptime("2022 11 6", "%Y %m %d").timestamp()
+    ncaab_efficiency.retrodate = datetime.strptime("2023 11 6", "%Y %m %d").timestamp()
     # ncaab_efficiency.model_hostname = "nccab-efficiency"
     # ncaab_efficiency.cron_window = 60 * 60
     ncaab_efficiency.start()
