@@ -399,6 +399,7 @@ def get_seed_league_efficiency()->Dict[str, EfficiencyEntry]:
                 de = entry.get("de") or 50.0,
                 tempo = entry.get("tempo") or 50.0
             )
+            print(seed_table[entry["id"]])
     return seed_table
 
 @ncaab_efficiency.task(e = Init)
@@ -490,6 +491,10 @@ async def set_projection_table(context, value):
 
 @ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_projection_table(event):
+    print("Iterating on...", datetime.fromtimestamp(float(event.ts)/1000))
+
+@ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
+async def iterate_projection_table(event):
 
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
@@ -501,8 +506,8 @@ async def iterate_projection_table(event):
    
     # get games from sportsdataio
     lookahead = timedelta(days=7)
+    start_date = datetime.fromtimestamp(float(event.ts)/1000)
     iter_date = datetime.fromtimestamp(float(event.ts)/1000)
-    print("Iterating on...", float(event.ts), iter_date)
     end_date = iter_date + lookahead
 
     tempos = []
@@ -517,7 +522,7 @@ async def iterate_projection_table(event):
     ppp_avg = sum(ppps)/len(ppps)
 
     while iter_date < end_date:
-        iter_date += timedelta(days=1)
+        print("Projecting on...", start_date, iter_date)
         games = spiodirect.ncaab.games_by_date.get_games(iter_date)
         for game in games:
             
@@ -562,6 +567,8 @@ async def iterate_projection_table(event):
                 home_team_score = home_team_score,
                 away_team_score = away_team_score
             )
+            
+        iter_date += timedelta(days=1)
             
     out_dict = dict()
     for key, value in ptable_out.items():
@@ -750,7 +757,7 @@ def update_team_efficiencies(*,
 @ncaab_efficiency.task(valid=days(1, at=UTC_PLUS_PST))
 async def iterate_efficiency(e):
     iter_date = datetime.fromtimestamp(float(e.ts)/1000)
-    print("Efficiency on...", float(e.ts), iter_date)
+    print("Efficiency on...", iter_date)
     
     # fix league efficiency at start of iteration
     eff = await get_league_efficiency_table(root)
@@ -871,7 +878,7 @@ async def set_trend_table(context, value):
     return value
       
 def compare_power_rating(a : EfficiencyEntry)->int:
-    return  .56 * a.oe - .46 * a.de   
+    return  .56 * a.oe - .44 * a.de   
 
 def compare_ap_rank(a : spiodirect.ncaab.team.Teamlike)->int:
     return  a.ApRank or 100
@@ -969,8 +976,8 @@ async def iterate_trend(e):
     await set_trend_table(root, trend_out)
 
 if __name__ == "__main__":
-    ncaab_efficiency.retrodate = datetime.strptime("2023 11 6", "%Y %m %d").timestamp()
+    ncaab_efficiency.retrodate = datetime.strptime("2023 11 2", "%Y %m %d").timestamp()
     # ncaab_efficiency.model_hostname = "nccab-efficiency"
-    # ncaab_efficiency.cron_window = 60 * 60
+    ncaab_efficiency.cron_window = 60 * 60
     ncaab_efficiency.start()
 
