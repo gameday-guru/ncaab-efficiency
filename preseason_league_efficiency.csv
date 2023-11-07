@@ -72,7 +72,7 @@ docked offense and defense 2 points each because of the coach",18.67168522
 57,Rutgers,103,103.8491698,89.8738449,68.07142941,,,18.61104334
 58,Mississippi St.,278,105.6585191,92.4050239,66.84212954,,,18.51056018
 59,Cincinnati,4,107.9862673,95.81905326,70.43013821,,,18.31192627
-60,VCU,45,103.4603503,90.67035829,69.61552046,"- above market 
+60,VCU,45,102.4603503,91.67035829,69.61552046,"- above market 
 - tempo around 67
 - AdjO: whatever it spits out from regression, bump it up a couple points 
 -AdjD: always ahd tall teams so check in on height weighted minutes, adjust accordingly","docked tempo by 1
@@ -135,7 +135,7 @@ improved defense by 4",16.16817306
 - AdjD closer to 96 (if regression spits out 100, average w 96)","docked tempo by 3
 improved offense by 6
 improved defense by 3",15.68421753
-89,Loyola Chicago,274,104.8768939,97.94895798,68.31478098,,,15.6335191
+89,Loyola Chicago,209,104.8768939,97.94895798,68.31478098,,,15.6335191
 90,Florida St.,29,105.5511909,98.9373747,70.67616499,,,15.57622201
 91,North Texas,141,103.661941,96.54229425,66.23726996,"- Maybe a little faster tempo
 - Depending on regression, make numbers a little worse (downgrade in coach)","Downgraded defense 3 points because of coach
@@ -267,7 +267,7 @@ improved offense by 5, defense by 4",11.89998747
 186,Norfolk St.,191,103.0516172,105.2179652,68.3386732,,,11.41300095
 187,Rice,146,103.9176236,106.5509551,71.2380184,,,11.31144897
 188,San Jose St.,222,101.9503102,104.0592679,66.62484144,,,11.30609587
-189,Wyoming,209,101.4419237,103.474499,67.97042097,,,11.27869769
+189,Wyoming,219,101.4419237,103.474499,67.97042097,,,11.27869769
 190,Western Kentucky,144,100.4650396,102.3178519,70.38183854,"- Tempo around 69 given fast pace offense and defense
 - Effective FG% of 51 = around 107 adjO, Effective FG% of 47 = around 96
 - ranged from 103 - 107, look at height of team, brought back everyone and def got worse",Their shooting stinks so below average on offense also below on defense because short team,11.24056738
@@ -353,7 +353,7 @@ increased offense by 1.7",9.322915321
 - Downgrade AdjO AdjD from regression","docked offense by .4, defense by .6",8.85152968
 252,Navy,258,95.90790882,101.9918446,66.9619968,,,8.832017305
 253,Texas Southern,304,97.2813786,103.8585024,71.2922715,,,8.779830942
-254,Army,263,98.71271638,105.6846442,70.23367272,,,8.777877733
+254,Army,263,96.71271638,105.6846442,70.23367272,,,8.777877733
 255,Texas A&M Commerce,392,98.23140567,105.2807418,69.40489821,,,8.686060804
 256,UC San Diego,1007,99.59644797,107.0838245,69.52175871,,,8.657128081
 257,Tulsa,5,96.97875563,103.791353,69.66665067,,,8.639907849
