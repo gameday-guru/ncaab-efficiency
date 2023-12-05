@@ -40,17 +40,17 @@ def get_game_t(tempo: float, oppontent_tempo: float, tempo_avg: float, possessio
     return game_t
 
 def get_weight_e(n_games: int):
-    if n_games <= 23:
-        weight = .04*n_games
+    if n_games <= 17:
+        weight = .055*n_games
     else: 
         weight = .94
     return weight
 
 def get_weight_t(n_games: int):
-    if n_games <= 13:
-        weight = .07*n_games
+    if n_games <= 5:
+        weight = .2*n_games
     else:
-        weight = .94
+        weight = 1
     return weight
 
 def get_new_e(preseason_oe: float, preseason_de: float, avg_game_oe: float, avg_game_de: float, weight: float):
@@ -433,8 +433,8 @@ def update_team_efficiencies(*,
         game_eff_table_out[home_team_id][game_id] = GameEfficiencyEntry(
             team_id = home_team_id,
             game_id = game.GameID,
-            game_oe = ot_factor * op_off_factor * 100 * ((game.HomeTeamScore/(home_possessions))/((home_factor * eff_table[away_team_id].de)/ppp_avg)),
-            game_de = ot_factor * op_def_factor * 100 * ((game.AwayTeamScore/(away_possessions))/((away_factor * eff_table[away_team_id].oe)/ppp_avg)),
+            game_oe = ot_factor * 100 * ((game.HomeTeamScore/(home_possessions))/(op_off_factor(home_factor * eff_table[away_team_id].de)/ppp_avg)),
+            game_de = ot_factor * 100 * ((game.AwayTeamScore/(away_possessions))/(op_def_factor(away_factor * eff_table[away_team_id].oe)/ppp_avg)),
             tempo = home_game_t
         )
         
