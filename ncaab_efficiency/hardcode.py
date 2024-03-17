@@ -1,5 +1,5 @@
 west_example =  [
-    [["106","195"],None,None,None],
+    [["106","126"],None,None,None],
     [None,None,None,None],
     [["276","102"],None,None,None],
     [None,None,None,None],
