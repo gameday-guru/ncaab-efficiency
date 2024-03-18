@@ -53,7 +53,7 @@
 # 
 # Governing Law
 # This EULA agreement, and any dispute arising out of or in connection with this EULA agreement, shall be governed by and construed in accordance with the laws of us.
-FROM ubuntu:18.04
+FROM ubuntu:latest
 COPY . /app
 WORKDIR /app
 
